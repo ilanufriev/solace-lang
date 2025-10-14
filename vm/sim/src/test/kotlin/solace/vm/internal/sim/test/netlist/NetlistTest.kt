@@ -24,4 +24,23 @@ class NetlistTest {
 
         assertEquals((2 + 3) * 5, w5.receive(), "Expression result is not as expected")
     }
+
+    @Test fun testBranching() {
+        var evalQueue = ArrayList<Leaf>()
+
+        var input = Wire<Int>(2)
+        var output = Wire<Int>()
+
+        var mul = Multiplier(input,Wire<Int>(2), Wire<Int>())
+        evalQueue.add(mul)
+
+        var add = Adder(input, Wire<Int>(10), Wire<Int>())
+        evalQueue.add(add)
+
+        var comp = Comparator(input, Wire<Int>(2), Wire<Int>())
+        evalQueue.add(comp)
+
+        var mux = Mux(arrayOf(input, add.out, mul.out), comp.out, output)
+
+    }
 }

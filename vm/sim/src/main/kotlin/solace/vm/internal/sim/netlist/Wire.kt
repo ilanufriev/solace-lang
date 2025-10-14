@@ -1,7 +1,7 @@
 package solace.vm.internal.sim.netlist
 
-class Wire<T> {
-    private var value: T? = null
+class Wire<T>(private var value: T?) {
+    constructor(): this(null) {}
 
     fun send(v: T) {
       value = v;
