@@ -1,40 +1,33 @@
 package solace.vm.internal.sim.test.netlist
 
-import solace.vm.internal.sim.netlist.Mux
+import solace.vm.internal.sim.netlist.Mux2
 import solace.vm.internal.sim.netlist.Wire
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class MuxTest {
-    @Test fun testMux() {
-        var mux = Mux(
-            arrayOf(Wire<Int>(), Wire<Int>(), Wire<Int>()),
-            Wire<Int>(),
-            Wire<Int>())
+    @Test fun testMux2() {
+        var mux = Mux2()
+        mux.connectPort("in1", Wire<Int>())
+        mux.connectPort("in2", Wire<Int>())
+        mux.connectPort("sel", Wire<Int>())
+        mux.connectPort("out", Wire<Int>())
 
-        mux.data_ins[0]!!.send(1)
-        mux.data_ins[1]!!.send(2)
-        mux.data_ins[2]!!.send(3)
+        mux.getPort("in1")!!.send(1)
+        mux.getPort("in2")!!.send(2)
 
         var pos = 1
 
-        mux.sel!!.send(pos)
+        mux.getPort("sel")!!.send(pos)
         mux.evaluate()
 
-        assertEquals(mux.data_ins[pos]!!.receive(), mux.out!!.receive())
-
-        pos = 2
-
-        mux.sel!!.send(pos)
-        mux.evaluate()
-
-        assertEquals(mux.data_ins[pos]!!.receive(), mux.out!!.receive())
+        assertEquals(mux.getPort("in2")!!.receive(), mux.getPort("out")!!.receive())
 
         pos = 0
 
-        mux.sel!!.send(pos)
+        mux.getPort("sel")!!.send(pos)
         mux.evaluate()
 
-        assertEquals(mux.data_ins[pos]!!.receive(), mux.out!!.receive())
+        assertEquals(mux.getPort("in1")!!.receive(), mux.getPort("out")!!.receive())
     }
 }

@@ -11,7 +11,10 @@ class MultiplierTest {
         val w2 = Wire<Int>()
         val w3 = Wire<Int>()
 
-        val multi = Multiplier(w1, w2, w3)
+        val multi = Multiplier()
+        multi.connectPort("in1", w1)
+        multi.connectPort("in2", w2)
+        multi.connectPort("out", w3)
 
         w1.send(93)
         w2.send(32)

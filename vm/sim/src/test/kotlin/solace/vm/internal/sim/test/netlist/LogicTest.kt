@@ -17,20 +17,41 @@ class LogicTest {
             val ab = Converter.intToBoolean(a)
             val bb = Converter.intToBoolean(b)
 
-            val lor = LogicOr(Wire<Int>(a), Wire<Int>(b), Wire<Int>())
+            val lor = LogicOr()
+            lor.connectPort("in1", Wire<Int>())
+            lor.connectPort("in2", Wire<Int>())
+            lor.connectPort("out", Wire<Int>())
+
+            lor.getPort("in1")!!.send(a)
+            lor.getPort("in2")!!.send(b)
+
             lor.evaluate()
+
             assertEquals(Converter.booleanToInt(ab || bb),
-                lor.out!!.receive())
+                lor.getPort("out")!!.receive())
 
-            val land = LogicAnd(Wire<Int>(a), Wire<Int>(b), Wire<Int>())
+            val land = LogicAnd()
+            land.connectPort("in1", Wire<Int>())
+            land.connectPort("in2", Wire<Int>())
+            land.connectPort("out", Wire<Int>())
+
+            land.getPort("in1")!!.send(a)
+            land.getPort("in2")!!.send(b)
+
             land.evaluate()
-            assertEquals(Converter.booleanToInt(ab && bb),
-                land.out!!.receive())
 
-            val lnot = LogicNot(Wire<Int>(a), Wire<Int>())
+            assertEquals(Converter.booleanToInt(ab && bb),
+                land.getPort("out")!!.receive())
+
+            val lnot = LogicNot()
+            lnot.connectPort("in", Wire<Int>())
+            lnot.connectPort("out", Wire<Int>())
+
+            lnot.getPort("in")!!.send(a);
             lnot.evaluate()
+
             assertEquals(Converter.booleanToInt(!ab),
-                lnot.out!!.receive())
+                lnot.getPort("out")!!.receive())
         }
     }
 }

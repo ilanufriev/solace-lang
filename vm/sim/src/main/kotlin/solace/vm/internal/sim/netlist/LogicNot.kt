@@ -1,18 +1,16 @@
 package solace.vm.internal.sim.netlist
 
 import solace.vm.internal.sim.netlist.util.Converter
-import solace.vm.internal.sim.netlist.util.Port
-import solace.vm.internal.sim.netlist.util.PortNotConnectedError
-import solace.vm.internal.sim.netlist.util.PortSentinel
+import solace.vm.internal.sim.types.*
 
-class LogicNot(
-    @Port var inp: Wire<Int>?,
-    @Port var out: Wire<Int>?
-) : Leaf {
+class LogicNot() : LeafType() {
+    override val ports = mutableMapOf<String, Wire<Int>?>(
+        "in" to null,
+        "out" to null,
+    )
+
     override fun evaluate() {
-        if (!PortSentinel.portsConnected(this)) throw PortNotConnectedError()
-
-        val a = Converter.intToBoolean(inp!!.receive() ?: 0)
-        out!!.send(Converter.booleanToInt(!a))
+        val a = Converter.intToBoolean(getPort("in").receive() ?: 0)
+        getPort("out").send(Converter.booleanToInt(!a))
     }
 }

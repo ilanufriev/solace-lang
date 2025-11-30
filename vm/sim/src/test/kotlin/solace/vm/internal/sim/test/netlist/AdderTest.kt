@@ -10,7 +10,11 @@ class AdderTest {
         val w1 = Wire<Int>()
         val w2 = Wire<Int>()
         val w3 = Wire<Int>()
-        val adder1 = Adder(w1, w2, w3)
+        val adder1 = Adder()
+
+        adder1.connectPort("in1", w1)
+        adder1.connectPort("in2", w2)
+        adder1.connectPort("out", w3)
 
         w1.send(2)
         w2.send(4)
