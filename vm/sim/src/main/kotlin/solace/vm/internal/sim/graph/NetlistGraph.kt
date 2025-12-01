@@ -1,6 +1,7 @@
 package solace.vm.internal.sim.graph
 
 import solace.vm.internal.sim.netlist.*
+import solace.vm.internal.sim.types.*
 
 object NetlistGraphFactory {
     fun makeNetlistGraphWithRegisteredLeaves(): NetlistGraph {
@@ -15,22 +16,32 @@ object NetlistGraphFactory {
         gr.registerLeafCtor("LogicNot", ::LogicNot)
         gr.registerLeafCtor("Multiplier", ::Multiplier)
         gr.registerLeafCtor("Mux2", ::Mux2)
+        gr.registerLeafCtor("Demux2", ::Demux2)
 
         return gr
     }
 }
 
-typealias DataType = Int
-typealias FifoType = MutableList<DataType>
-typealias LeafType = Leaf<DataType>
-typealias WireType = Wire<DataType>
-
 fun makeFifoTypeInstance(): FifoType {
     return mutableListOf<DataType>()
 }
 
+typealias ConnectionsMap = MutableMap<String, MutableMap<String, String>>
+
+fun makeConntectionsMap(): ConnectionsMap {
+    return mutableMapOf<String, MutableMap<String, String>>()
+}
+
 // This is the main VM part, a graph engine
 class NetlistGraph {
+    enum class FifoDirection {
+        INPUT,
+        OUTPUT,
+        LOOP
+    }
+
+    data class Fifo(val queue: FifoType, val direction: FifoDirection)
+
     // Nodes of the graph (called Leaves as in Vivado)
     private val leaves = mutableMapOf<String, LeafType>()
 
@@ -41,12 +52,15 @@ class NetlistGraph {
     private val evalQueue = arrayListOf<String>()
 
     // Fifos provide a way to insert values to and extract values from the graph
-    private val inputFifos = mutableMapOf<String, FifoType>()
-    private val outputFifos = mutableMapOf<String, FifoType>()
+    private val fifos = mutableMapOf<String, Fifo>()
 
     // Fifo name -> leaf name -> leaf port name
-    private val inputFifoConnections = mutableMapOf<String, MutableList<Pair<String, String>>>()
-    private val outputFifoConnections = mutableMapOf<String, MutableList<Pair<String, String>>>()
+    private val fifoConnections = mutableMapOf<String, MutableList<Pair<String, String>>>()
+
+    private val namedWires = mutableMapOf<String, WireType>()
+
+    // Named wire name -> leaf name -> leaf port name
+    private val namedWireConnections = makeConntectionsMap()
 
     private fun isLeafTypeRegistered(name: String): Boolean {
         return leafCtorRegistry.containsKey(name)
@@ -72,77 +86,99 @@ class NetlistGraph {
         return leafCtorRegistry[name]!!
     }
 
-    private fun hasInputFifo(name: String): Boolean {
-        return inputFifos.containsKey(name)
+    private fun hasFifo(name: String): Boolean {
+        return fifos.containsKey(name)
     }
 
-    private fun getInputFifo(name: String): FifoType {
-        if (hasInputFifo(name)) {
-            return inputFifos[name]!!
+    private fun getFifo(name: String, direction: FifoDirection): Fifo {
+        if (hasFifo(name) && fifos[name]!!.direction == direction) {
+            return fifos[name]!!
         }
 
-        throw IllegalArgumentException("Input fifo $name does not exist")
+        throw IllegalArgumentException("Fifo with name $name and direction ${direction.name} does not exist")
     }
 
-    fun addInputFifo(name: String) {
-        inputFifos[name] = makeFifoTypeInstance()
-        inputFifoConnections[name] = mutableListOf<Pair<String, String>>()
+    private fun getFifo(name: String): Fifo {
+        if (hasFifo(name)) {
+            return fifos[name]!!
+        }
+
+        throw IllegalArgumentException("Fifo with name $name does not exist")
     }
 
-    private fun addInputFifoConnection(fifoName: String, leafName: String, leafPortName: String) {
-        val fifo = getInputFifo(fifoName)
+    fun addFifo(name: String, direction: FifoDirection) {
+        fifos[name] = Fifo(makeFifoTypeInstance(), direction)
+        fifoConnections[name] = mutableListOf<Pair<String, String>>()
+    }
+
+    private fun addFifoConnection(fifoName: String, direction: FifoDirection, leafName: String, leafPortName: String) {
+        val fifo = getFifo(fifoName, direction)
         val leaf = getLeaf(leafName)
 
-        inputFifoConnections[fifoName]!!.addLast(Pair(leafName, leafPortName))
+        fifoConnections[fifoName]!!.addLast(Pair(leafName, leafPortName))
     }
 
-    // Take data from input fifo and send it to the respective wire
-    private fun pushDataFromInputFifo() {
-        for ((fifoName, fifo) in inputFifos.entries) {
-            for ((leafName, portName) in inputFifoConnections[fifoName]!!) {
-                if (fifo.isEmpty()) {
+    private fun addFifoConnection(fifoName: String, leafName: String, leafPortName: String) {
+        val fifo = getFifo(fifoName)
+        val leaf = getLeaf(leafName)
+
+        fifoConnections[fifoName]!!.addLast(Pair(leafName, leafPortName))
+    }
+
+    // Take data from fifos and send it to the respective wires
+    private fun pushDataFromFifosToLeaves(direction: FifoDirection) {
+        for ((fifoName, fifo) in fifos.entries) {
+            if (fifo.direction != direction) {
+                continue
+            }
+
+            for ((leafName, portName) in fifoConnections[fifoName]!!) {
+                if (fifo.queue.isEmpty()) {
                     throw NoSuchElementException("Not enough data in fifo $fifoName to provide inputs")
                 }
+
                 val leaf = getLeaf(leafName)
-                leaf.getPort(portName).send(fifo.first())
-                fifo.removeAt(0)
+                leaf.getPort(portName).send(fifo.queue.first())
+                fifo.queue.removeAt(0)
             }
         }
     }
 
-    private fun hasOutputFifo(name: String): Boolean {
-        return outputFifos.containsKey(name)
-    }
+    // Pull data from respective wires into fifos
+    private fun pullDataFromLeavesToFifos(direction: FifoDirection) {
+        for ((fifoName, fifo) in fifos.entries) {
+            if (fifo.direction != direction) {
+                continue
+            }
 
-    private fun getOutputFifo(name: String): FifoType {
-        if (hasOutputFifo(name)) {
-            return outputFifos[name]!!
-        }
-
-        throw IllegalArgumentException("Output fifo $name does not exist")
-    }
-
-    fun addOutputFifo(name: String) {
-        outputFifos[name] = makeFifoTypeInstance()
-        outputFifoConnections[name] = mutableListOf<Pair<String, String>>()
-    }
-
-    private fun addOutputFifoConnection(fifoName: String, leafName: String, leafPortName: String) {
-        val fifo = getOutputFifo(fifoName)
-        val leaf = getLeaf(leafName)
-
-        outputFifoConnections[fifoName]!!.addLast(Pair(leafName, leafPortName))
-    }
-
-    // Pull data from respective wires into output fifo
-    private fun pullDataToOutputFifo() {
-        for ((fifoName, fifo) in outputFifos.entries) {
-            for ((leafName, portName) in outputFifoConnections[fifoName]!!) {
+            for ((leafName, portName) in fifoConnections[fifoName]!!) {
                 val leaf = getLeaf(leafName)
                 val data = leaf.getPort(portName).receive() ?: 0
-                fifo.addLast(data)
+                fifo.queue.addLast(data)
             }
         }
+    }
+
+    private fun hasNamedWire(name: String): Boolean {
+        return namedWires.containsKey(name)
+    }
+
+    private fun getNamedWire(name: String): WireType {
+        if (hasNamedWire(name)) {
+            return namedWires[name]!!
+        }
+
+        throw IllegalArgumentException("Named wire $name hasn't been added")
+    }
+
+    fun addNamedWire(name: String) {
+        namedWires[name] = WireType()
+        namedWireConnections[name] = mutableMapOf<String, String>()
+    }
+
+    fun addNamedWireConnection(wireName: String, leafName: String, leafPortName: String) {
+        val wire = getNamedWire(wireName)
+        namedWireConnections[wireName]!![leafName] = leafPortName
     }
 
     fun addLeaf(name: String, typeName: String) {
@@ -176,60 +212,59 @@ class NetlistGraph {
     }
 
     // Connect leaf's port to input fifo
-    fun conLeafToInputFifo(toName: String, toPortName: String, fifoName: String) {
+    fun conLeafToFifo(toName: String, toPortName: String, fifoName: String) {
         val to = getLeaf(toName)
-        val fifo = getInputFifo(fifoName)
+        val fifo = getFifo(fifoName)
         val connection = WireType()
 
         to.connectPort(toPortName, connection)
-        addInputFifoConnection(fifoName, toName, toPortName)
+        addFifoConnection(fifoName, toName, toPortName)
     }
 
-    // Connect leaf's port to output fifo
-    fun conLeafToOutputFifo(toName: String, toPortName: String, fifoName: String) {
+    fun conLeafToNamedWire(toName: String, toPortName: String, wireName: String) {
+        val wire = getNamedWire(wireName)
         val to = getLeaf(toName)
-        val fifo = getOutputFifo(fifoName)
-        val connection = WireType()
+        to.connectPort(toPortName, wire)
 
-        to.connectPort(toPortName, connection)
-        addOutputFifoConnection(fifoName, toName, toPortName)
+    }
+
+    fun setNamedWireValue(wireName: String, imm: DataType) {
+        val wire = getNamedWire(wireName)
+        wire.send(imm)
     }
 
     // Push immediate value into fifo
-    fun pushImmToInputFifo(fifoName: String, imm: DataType) {
-        val fifo = getInputFifo(fifoName)
-        fifo.addLast(imm)
+    fun pushImmToFifo(fifoName: String, imm: DataType) {
+        val fifo = getFifo(fifoName)
+        fifo.queue.addLast(imm)
     }
 
     // Pull immediate value from output fifo
-    fun pullImmFromOutputFifo(fifoName: String): DataType {
-        val fifo = getOutputFifo(fifoName)
-        if (fifo.isEmpty()) {
+    fun pullImmFromFifo(fifoName: String): DataType {
+        val fifo = getFifo(fifoName)
+        if (fifo.queue.isEmpty()) {
             throw NoSuchElementException("No elements in fifo $fifoName")
         }
 
-        val last = fifo.last()
-        fifo.removeLast()
+        val last = fifo.queue.last()
+        fifo.queue.removeLast()
         return last
     }
 
-    fun getInputFifoSize(fifoName: String): Int {
-        val fifo = getInputFifo(fifoName)
-        return fifo.size
-    }
-
-    fun getOutputFifoSize(fifoName: String): Int {
-        val fifo = getOutputFifo(fifoName)
-        return fifo.size
+    fun getFifoSize(fifoName: String): Int {
+        val fifo = getFifo(fifoName)
+        return fifo.queue.size
     }
 
     fun evaluate() {
-        pushDataFromInputFifo()
+        pushDataFromFifosToLeaves(FifoDirection.INPUT)
+        pushDataFromFifosToLeaves(FifoDirection.LOOP)
 
         for(leafName in evalQueue) {
             getLeaf(leafName).evaluate()
         }
 
-        pullDataToOutputFifo()
+        pullDataFromLeavesToFifos(FifoDirection.OUTPUT)
+        pullDataFromLeavesToFifos(FifoDirection.LOOP)
     }
 }

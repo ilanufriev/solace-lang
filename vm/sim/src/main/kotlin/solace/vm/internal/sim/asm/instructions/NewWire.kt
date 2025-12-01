@@ -2,20 +2,24 @@ package solace.vm.internal.sim.asm.instructions
 
 import solace.vm.internal.sim.asm.AsmParser
 
-class InFifo : Instruction {
-    // Syntax: .infifo $fifo1
+class NewWire : Instruction {
+    // syntax: .newwire $wire00
     //         instr leafName
-    var fifoName: String? = null
+    var wireName: String? = null
+    override var isInit: Boolean = false
 
     override fun parse(s: String) {
         val matches = AsmParser.matchPatterns(s, arrayOf(
             AsmParser.instructionPattern,
-            AsmParser.leafNamePattern
+            AsmParser.leafNamePattern,
+            AsmParser.isInitPattern
         ))
 
         matches[0]
             ?: throw NoInstructionStartFound(s)
-        fifoName = matches[1]
-            ?: throw NoFifoNameFound(s)
+        wireName = matches[1]
+            ?: throw NoLeafNameFound(s)
+
+        isInit = matches[2] != null
     }
 }

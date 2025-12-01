@@ -2,11 +2,10 @@ package solace.vm.internal.sim.asm
 
 import solace.vm.internal.sim.asm.instructions.Con
 import solace.vm.internal.sim.asm.instructions.ImmCon
-import solace.vm.internal.sim.asm.instructions.InFifo
-import solace.vm.internal.sim.asm.instructions.InFifoCon
+import solace.vm.internal.sim.asm.instructions.NewInFifo
+import solace.vm.internal.sim.asm.instructions.FifoCon
 import solace.vm.internal.sim.asm.instructions.New
-import solace.vm.internal.sim.asm.instructions.OutFifo
-import solace.vm.internal.sim.asm.instructions.OutFifoCon
+import solace.vm.internal.sim.asm.instructions.NewOutFifo
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -29,22 +28,13 @@ class InstructionsTests {
         assertEquals("Mux2", new.leafType)
     }
 
-    @Test fun testInFifoConInstruction() {
-        val inFifoCon = InFifoCon()
+    @Test fun testFifoConInstruction() {
+        val inFifoCon = FifoCon()
         inFifoCon.parse(".infifocon \$fifo1 \$add01@in1")
 
         assertEquals("fifo1", inFifoCon.fifoName)
         assertEquals("add01", inFifoCon.leafName)
         assertEquals("in1", inFifoCon.leafPortName)
-    }
-
-    @Test fun testOutFifoConInstruction() {
-        val outFifoCon = OutFifoCon()
-        outFifoCon.parse(".outfifocon    \$fifo1   \$add01@in1")
-
-        assertEquals("fifo1", outFifoCon.fifoName)
-        assertEquals("add01", outFifoCon.leafName)
-        assertEquals("in1", outFifoCon.leafPortName)
     }
 
     @Test fun testImmConInstruction() {
@@ -57,14 +47,14 @@ class InstructionsTests {
     }
 
     @Test fun testInFifoInstruction() {
-        val inFifo = InFifo()
+        val inFifo = NewInFifo()
         inFifo.parse(".infifo \$fifo1")
 
         assertEquals("fifo1", inFifo.fifoName)
     }
 
     @Test fun testOutFifoInstruction() {
-        val outFifo = OutFifo()
+        val outFifo = NewOutFifo()
         outFifo.parse(".outfifo \$fifo1")
 
         assertEquals("fifo1", outFifo.fifoName)

@@ -1,5 +1,6 @@
 package solace.vm.internal.sim.test.netlist
 
+import solace.vm.internal.sim.graph.NetlistGraph
 import solace.vm.internal.sim.graph.NetlistGraphFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,57 +35,56 @@ class NetlistTest {
 
     @Test fun testNetlishGraph() {
         val gr = NetlistGraphFactory.makeNetlistGraphWithRegisteredLeaves()
-        gr.addInputFifo("a")
-        gr.addInputFifo("b")
-        gr.addOutputFifo("c")
+        gr.addFifo("a", NetlistGraph.FifoDirection.INPUT)
+        gr.addFifo("b", NetlistGraph.FifoDirection.INPUT)
+        gr.addFifo("c", NetlistGraph.FifoDirection.OUTPUT)
 
         gr.addLeaf("add1", "Adder")
         gr.addLeaf("mul1", "Multiplier")
 
-        gr.conLeafToInputFifo("add1", "in1", "a")
-        gr.conLeafToInputFifo("add1", "in2", "a")
-        gr.conLeafToInputFifo("mul1", "in1", "b")
-        gr.conLeafToOutputFifo("mul1", "out", "c")
+        gr.conLeafToFifo("add1", "in1", "a")
+        gr.conLeafToFifo("add1", "in2", "a")
+        gr.conLeafToFifo("mul1", "in1", "b")
+        gr.conLeafToFifo("mul1", "out", "c")
 
         gr.conLeaf("add1", "out", "mul1", "in2")
 
-        gr.pushImmToInputFifo("a", 2)
-        gr.pushImmToInputFifo("a", 3)
-        gr.pushImmToInputFifo("a", 6)
-        gr.pushImmToInputFifo("b", 5)
+        gr.pushImmToFifo("a", 2)
+        gr.pushImmToFifo("a", 3)
+        gr.pushImmToFifo("a", 6)
+        gr.pushImmToFifo("b", 5)
 
         gr.evaluate()
 
-        assertEquals(1, gr.getInputFifoSize("a"))
-        assertEquals(0, gr.getInputFifoSize("b"))
-        assertEquals(1, gr.getOutputFifoSize("c"))
+        assertEquals(1, gr.getFifoSize("a"))
+        assertEquals(0, gr.getFifoSize("b"))
+        assertEquals(1, gr.getFifoSize("c"))
 
-        val result = gr.pullImmFromOutputFifo("c")
+        val result = gr.pullImmFromFifo("c")
 
         assertEquals((2 + 3) * 5, result)
     }
 
     @Test fun testNetlishGraphImmediates() {
         val gr = NetlistGraphFactory.makeNetlistGraphWithRegisteredLeaves()
-        gr.addInputFifo("a")
-        gr.addOutputFifo("c")
+        gr.addFifo("a", NetlistGraph.FifoDirection.INPUT)
+        gr.addFifo("c", NetlistGraph.FifoDirection.OUTPUT)
 
         gr.addLeaf("add1", "Adder")
         gr.addLeaf("mul1", "Multiplier")
 
-        gr.conLeafToInputFifo("add1", "in1", "a")
-        gr.conLeafToInputFifo("add1", "in2", "a")
+        gr.conLeafToFifo("add1", "in1", "a")
+        gr.conLeafToFifo("add1", "in2", "a")
         gr.conLeafToImmediate("mul1", "in1", 5)
-        gr.conLeafToOutputFifo("mul1", "out", "c")
-
+        gr.conLeafToFifo("mul1", "out", "c")
         gr.conLeaf("add1", "out", "mul1", "in2")
 
-        gr.pushImmToInputFifo("a", 2)
-        gr.pushImmToInputFifo("a", 3)
+        gr.pushImmToFifo("a", 2)
+        gr.pushImmToFifo("a", 3)
 
         gr.evaluate()
 
-        val result = gr.pullImmFromOutputFifo("c")
+        val result = gr.pullImmFromFifo("c")
 
         assertEquals((2 + 3) * 5, result)
     }

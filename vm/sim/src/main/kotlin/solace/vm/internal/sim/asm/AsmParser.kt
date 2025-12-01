@@ -1,34 +1,46 @@
 package solace.vm.internal.sim.asm
 
 import solace.vm.internal.sim.asm.instructions.Con
-import solace.vm.internal.sim.asm.instructions.Eval
+import solace.vm.internal.sim.asm.instructions.FifoCon
 import solace.vm.internal.sim.asm.instructions.IllegalInstruction
 import solace.vm.internal.sim.asm.instructions.ImmCon
-import solace.vm.internal.sim.asm.instructions.InFifo
-import solace.vm.internal.sim.asm.instructions.OutFifo
-import solace.vm.internal.sim.asm.instructions.InFifoCon
+import solace.vm.internal.sim.asm.instructions.NewInFifo
+import solace.vm.internal.sim.asm.instructions.NewOutFifo
 import solace.vm.internal.sim.asm.instructions.Instruction
 import solace.vm.internal.sim.asm.instructions.New
-import solace.vm.internal.sim.asm.instructions.OutFifoCon
+import solace.vm.internal.sim.asm.instructions.NewLoopFifo
+import solace.vm.internal.sim.asm.instructions.NewWire
+import solace.vm.internal.sim.asm.instructions.SetWire
+import kotlin.math.min
 
 object AsmParser {
     const val identifierPattern = "[a-zA-Z][a-zA-Z0-9]*"
     const val numberPattern = "[0-9]+"
+    const val isInitPattern = "\\?"
     const val instructionPattern = ".${identifierPattern}"
     const val leafTypePattern = "%${identifierPattern}"
     const val leafNamePattern = "\\\$${identifierPattern}"
     const val leafPortPattern = "@${identifierPattern}"
     const val immediateValuePattern = "#${numberPattern}"
 
-    val instructionTypes = mapOf<String, (() -> Instruction)?>(
-        ".new" to ::New,
-        ".con" to ::Con,
-        ".infifocon" to ::InFifoCon,
-        ".outfifocon" to ::OutFifoCon,
-        ".immcon" to ::ImmCon,
-        ".infifo" to ::InFifo,
-        ".outfifo" to ::OutFifo,
-        ".eval" to ::Eval
+    data class InstructionType(val strCode: String, val opCode: Byte)
+
+    data class EncodedInstruction(var opCode: Byte, var length: Byte, var params: String) {
+        override fun toString(): String {
+            return opCode.toHexString() + length.toHexString() + params
+        }
+    }
+
+    val instructionTypes = mapOf<InstructionType, (() -> Instruction)?>(
+        InstructionType(".new", 0x01) to ::New,
+        InstructionType(".con", 0x02) to ::Con,
+        InstructionType(".fifocon", 0x03) to ::FifoCon,
+        InstructionType(".immcon", 0x04) to ::ImmCon,
+        InstructionType(".newinfifo", 0x05) to ::NewInFifo,
+        InstructionType(".newoutfifo", 0x06) to ::NewOutFifo,
+        InstructionType(".newloopfifo", 0x07) to ::NewLoopFifo,
+        InstructionType(".newwire", 0x08) to ::NewWire,
+        InstructionType(".setwire", 0x09) to ::SetWire,
     )
 
     fun matchPatterns(s: String, matchPatterns: Array<String>): ArrayList<String?> {
@@ -46,7 +58,58 @@ object AsmParser {
         return matches
     }
 
-    fun matchAndTrim(s: String, regex: Regex): Pair<MatchResult?, String> {
+    private fun removeWhitespace(source: String): String {
+        return source.filter { c ->  !c.isWhitespace() }
+    }
+
+    fun parseEncodedInstructions(bytecode: String): List<EncodedInstruction> {
+        val encodedList = mutableListOf<EncodedInstruction>()
+        var buffer = bytecode
+        while (!buffer.isEmpty()) {
+            val opCode = buffer.substring(0, 2).hexToByte()
+            val length = buffer.substring(2, 4).hexToByte()
+            val params = buffer.substring(4, min(4 + length, buffer.length));
+            encodedList.addLast(EncodedInstruction(opCode, length, params))
+            buffer = buffer.substring(4 + length)
+        }
+
+        return encodedList
+    }
+
+    fun decodeInstructions(bytecode: List<EncodedInstruction>): List<String> {
+        val decodedList = mutableListOf<String>()
+        for (einstr in bytecode) {
+            val itype = matchOpCode(einstr.opCode)
+                ?: throw IllegalInstruction(einstr.toString())
+            decodedList.addLast(buildString { append(itype.strCode + einstr.params) })
+        }
+
+        return decodedList
+    }
+
+    fun encodeInstructions(source: String): List<EncodedInstruction> {
+        val encodedList = mutableListOf<EncodedInstruction>()
+        val instrStrings = splitIntoInstrStrings(source).map { s -> removeWhitespace(s) };
+        for (instrString in instrStrings) {
+            val (match, leftover) = matchAndTrim(instrString, Regex(instructionPattern))
+            match
+                ?: throw IllegalInstruction(instrString)
+            val instructionType = matchLongest(match.value)
+                ?: throw IllegalInstruction(instrString)
+
+            encodedList.addLast(
+                EncodedInstruction(
+                    instructionType.opCode,
+                    leftover.length.toByte(),
+                    leftover
+                )
+            )
+        }
+
+        return encodedList
+    }
+
+    private fun matchAndTrim(s: String, regex: Regex): Pair<MatchResult?, String> {
         val buffer = s.substring(indexOfFirstNonWs(s, 0))
         val match = regex.find(buffer)
             ?: return Pair(null, s)
@@ -59,7 +122,7 @@ object AsmParser {
         return Pair(match, newString)
     }
 
-    fun indexOfFirstNonWs(s: String, startPos: Int): Int {
+    private fun indexOfFirstNonWs(s: String, startPos: Int): Int {
         for (i in startPos..(s.length - 1)) {
             if (s[i] != ' ')
                 return i;
@@ -68,35 +131,50 @@ object AsmParser {
         return (s.length - 1)
     }
 
-    fun parseIntoInstrs(source: String): List<Instruction> {
+    private fun matchOpCode(opCode: Byte): InstructionType? {
+        val matches = instructionTypes.filter {
+            (itype, _) -> itype.opCode == opCode
+        }
+
+        if (matches.isEmpty())
+            return null
+
+        return matches.keys.first()
+    }
+
+    private fun matchLongest(instrString: String): InstructionType? {
+        val matches = instructionTypes.filter {
+            (itype, ctor) -> instrString.startsWith(itype.strCode)
+        }
+
+        if (matches.isEmpty())
+            return null
+
+        return matches.maxBy { (i, c) -> i.strCode.length }.key
+    }
+
+    fun parseIntoInstrs(source: List<String>): List<Instruction> {
         val instrList = mutableListOf<Instruction>()
-        val instrStringList = splitIntoInstrStrings(source);
 
-        for (instrString in instrStringList) {
-            var instrFound = false
+        for (instrString in source) {
+            val instructionType = matchLongest(instrString)
+                ?: throw IllegalInstruction(instrString);
 
-            for ((prefix, ctor) in instructionTypes) {
-                if (!instrString.startsWith(prefix)) {
-                    continue
-                }
-
-                instrFound = true
-
-                val instr = ctor!!.invoke()
-                instr.parse(instrString)
-                instrList.addLast(instr)
-                break
-            }
-
-            if (!instrFound) {
-                throw IllegalInstruction(instrString)
-            }
+            val ctor = instructionTypes[instructionType]!!
+            val instr = ctor.invoke()
+            instr.parse(instrString)
+            instrList.addLast(instr)
         }
 
         return instrList
     }
 
-    fun splitIntoInstrStrings(source: String): List<String> {
+    fun parseIntoInstrs(source: String): List<Instruction> {
+        val instrStringList = splitIntoInstrStrings(source);
+        return parseIntoInstrs(instrStringList)
+    }
+
+    private fun splitIntoInstrStrings(source: String): List<String> {
         val instrList = mutableListOf<String>()
 
         var first = source.indexOf('.', 0)
@@ -115,10 +193,6 @@ object AsmParser {
         }
 
         return instrList
-    }
-
-    fun isInstruction(s: String): Boolean {
-        return s.startsWith(".")
     }
 }
 

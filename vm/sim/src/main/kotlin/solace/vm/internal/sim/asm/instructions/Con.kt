@@ -3,11 +3,14 @@ package solace.vm.internal.sim.asm.instructions
 import solace.vm.internal.sim.asm.AsmParser
 
 class Con : Instruction {
-    // syntax: .con $mux00@in1 $add00@out
+    // syntax: .con $mux00@in1 $add00@out ?
+    //         instr leafName leafPortName leafName leafPortName isInit (optional)
     var leafName1: String? = null
     var leafPortName1: String? = null
     var leafName2: String? = null
     var leafPortName2: String? = null
+
+    override var isInit: Boolean = false
 
     override fun parse(s: String) {
         val matches = AsmParser.matchPatterns(s, arrayOf(
@@ -15,7 +18,8 @@ class Con : Instruction {
             AsmParser.leafNamePattern,
             AsmParser.leafPortPattern,
             AsmParser.leafNamePattern,
-            AsmParser.leafPortPattern
+            AsmParser.leafPortPattern,
+            AsmParser.isInitPattern
         ))
 
         matches[0]
@@ -28,5 +32,7 @@ class Con : Instruction {
             ?: throw NoLeafNameFound(s)
         leafPortName2 = matches[4]
             ?: throw NoLeafPortNameFound(s)
+
+        isInit = matches[5] != null
     }
 }

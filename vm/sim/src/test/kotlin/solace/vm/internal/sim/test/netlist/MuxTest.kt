@@ -8,26 +8,26 @@ import kotlin.test.assertEquals
 class MuxTest {
     @Test fun testMux2() {
         var mux = Mux2()
+        mux.connectPort("in0", Wire<Int>())
         mux.connectPort("in1", Wire<Int>())
-        mux.connectPort("in2", Wire<Int>())
         mux.connectPort("sel", Wire<Int>())
         mux.connectPort("out", Wire<Int>())
 
-        mux.getPort("in1")!!.send(1)
-        mux.getPort("in2")!!.send(2)
+        mux.getPort("in0").send(1)
+        mux.getPort("in1").send(2)
 
         var pos = 1
 
-        mux.getPort("sel")!!.send(pos)
+        mux.getPort("sel").send(pos)
         mux.evaluate()
 
-        assertEquals(mux.getPort("in2")!!.receive(), mux.getPort("out")!!.receive())
+        assertEquals(mux.getPort("in1").receive(), mux.getPort("out").receive())
 
         pos = 0
 
-        mux.getPort("sel")!!.send(pos)
+        mux.getPort("sel").send(pos)
         mux.evaluate()
 
-        assertEquals(mux.getPort("in1")!!.receive(), mux.getPort("out")!!.receive())
+        assertEquals(mux.getPort("in0").receive(), mux.getPort("out").receive())
     }
 }

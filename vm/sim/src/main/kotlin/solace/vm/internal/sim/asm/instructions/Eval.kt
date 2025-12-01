@@ -5,6 +5,7 @@ import solace.vm.internal.sim.asm.AsmParser
 class Eval : Instruction {
     // Syntax: eval
     //         instr
+    override var isInit: Boolean = false
     override fun parse(s: String) {
         val matches = AsmParser.matchPatterns(s, arrayOf(
             AsmParser.instructionPattern

@@ -7,6 +7,7 @@ class Adder() : LeafType() {
         "in1" to null,
         "in2" to null,
         "out" to null,
+        "en" to null
     )
 
     override fun evaluate() {
