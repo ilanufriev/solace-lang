@@ -10,17 +10,18 @@ program
 
 // node Name : hardware/software ( in: a; out: b,c; self: s; ) { init { ... } run { ... } }
 nodeDecl
-    : NODE ID ':' nodeKind
+    : NODE ID ':' HARDWARE
+      LPAREN channelSignature? RPAREN
+      LBRACE
+        hardwareInitBlock
+        hardwareRunBlock
+      RBRACE
+    | NODE ID ':' SOFTWARE
       LPAREN channelSignature? RPAREN
       LBRACE
         initBlock
         runBlock
       RBRACE
-    ;
-
-nodeKind
-    : HARDWARE
-    | SOFTWARE
     ;
 
 // in/out/self — сигнатура FIFO-каналов узла
@@ -47,8 +48,20 @@ runBlock
     : RUN block
     ;
 
+hardwareInitBlock
+    : INIT hardwareBlock
+    ;
+
+hardwareRunBlock
+    : RUN hardwareBlock
+    ;
+
 block
     : LBRACE statement* RBRACE
+    ;
+
+hardwareBlock
+    : LBRACE hardwareStatement* RBRACE
     ;
 
 // -------------------------
@@ -65,9 +78,25 @@ statement
     | SEMI                // пустой оператор
     ;
 
+// В hardware-узлах локальные переменные в init/run — неявно int и
+// объявляются без ключевого слова (интерпретируются как неизменяемые).
+hardwareStatement
+    : hardwareVarDeclStmt
+    | fifoWriteStmt
+    | printStmt
+    | hardwareIfStmt
+    | exprStmt
+    | SEMI
+    ;
+
 // int x = 0; / string s = "hi";
 varDeclStmt
     : type ID (ASSIGN expr)? SEMI
+    ;
+
+// x = expr; (hardware init/run: неявное объявление int)
+hardwareVarDeclStmt
+    : ID ASSIGN expr SEMI
     ;
 
 type
@@ -93,6 +122,11 @@ printStmt
 // if (cond) { ... } else { ... }
 ifStmt
     : IF LPAREN expr RPAREN block (ELSE block)?
+    ;
+
+// if (cond) { ... } else { ... } в hardware-блоках (с неявными int)
+hardwareIfStmt
+    : IF LPAREN expr RPAREN hardwareBlock (ELSE hardwareBlock)?
     ;
 
 // "голое" выражение как оператор

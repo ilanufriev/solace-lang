@@ -4,10 +4,13 @@ node Counter : hardware (
     self: loop;
 ) {
     init {
-        int x = 0;
+        x = 5;
+        out <- x;
+
     }
 
     run {
+        x = 0;
         // отправляем текущее значение в выходной FIFO
         numbers <- x;
 
@@ -15,8 +18,8 @@ node Counter : hardware (
         x = x + 1;
 
         // при желании можно использовать self FIFO
-        // loop <- x;
-        // int tmp = $loop;
+        loop <- x;
+        tmp = $loop;
     }
 }
 
@@ -31,10 +34,10 @@ node BitShifter : hardware (
 
     run {
         // блокирующее чтение из входного FIFO
-        int n = $inNum;
+        n = $inNum;
 
         // битовый сдвиг влево
-        int res = n << 1;
+        res = n << 1;
 
         // отправляем результат
         shifted <- res;
