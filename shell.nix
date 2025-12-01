@@ -11,6 +11,7 @@ pkgs.mkShell {
 
   shellHook = ''
     export JAVA_HOME=${pkgs.jdk21.home}
+    export GRADLE_USER_HOME=.gradle-user-home 
 
     if [ -n "$GRADLE_OPTS" ]; then
       export GRADLE_OPTS="-Dorg.gradle.java.home=$JAVA_HOME $GRADLE_OPTS"
