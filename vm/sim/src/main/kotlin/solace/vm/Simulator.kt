@@ -6,7 +6,6 @@ import solace.vm.internal.sim.graph.NetlistGraph
 import solace.vm.internal.sim.netlist.Fifo
 import solace.vm.internal.sim.graph.NetlistGraphFactory
 import solace.vm.internal.sim.types.DataType
-import javax.xml.crypto.Data
 
 class Simulator {
     enum class ExecStatus {
