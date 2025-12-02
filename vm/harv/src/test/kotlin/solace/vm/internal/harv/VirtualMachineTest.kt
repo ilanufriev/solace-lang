@@ -400,6 +400,9 @@ class VirtualMachineTest {
                 .logicalNot()
                 .push(69)
                 .logicalNot()
+                .push(69)
+                .logicalNot()
+                .logicalNot()
                 .build()
         }
 
@@ -408,6 +411,7 @@ class VirtualMachineTest {
         assertEquals(0, stack[0])
         assertEquals(1, stack[1])
         assertEquals(0, stack[2])
+        assertEquals(1, stack[3])
     }
 
     @Test
