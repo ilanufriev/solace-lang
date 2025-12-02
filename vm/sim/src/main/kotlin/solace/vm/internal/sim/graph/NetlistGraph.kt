@@ -17,6 +17,7 @@ object NetlistGraphFactory {
         gr.registerLeafCtor("Multiplier", ::Multiplier)
         gr.registerLeafCtor("Mux2", ::Mux2)
         gr.registerLeafCtor("Demux2", ::Demux2)
+        gr.registerLeafCtor("Register", ::Register)
 
         return gr
     }
@@ -26,21 +27,15 @@ fun makeFifoTypeInstance(): FifoType {
     return mutableListOf<DataType>()
 }
 
-typealias ConnectionsMap = MutableMap<String, MutableMap<String, String>>
-
-fun makeConntectionsMap(): ConnectionsMap {
-    return mutableMapOf<String, MutableMap<String, String>>()
-}
-
 // This is the main VM part, a graph engine
 class NetlistGraph {
     enum class FifoDirection {
         INPUT,
         OUTPUT,
-        LOOP
     }
 
     data class Fifo(val queue: FifoType, val direction: FifoDirection)
+    data class FifoConnection(val leafName: String, val leafPortName: String)
 
     // Nodes of the graph (called Leaves as in Vivado)
     private val leaves = mutableMapOf<String, LeafType>()
@@ -54,13 +49,11 @@ class NetlistGraph {
     // Fifos provide a way to insert values to and extract values from the graph
     private val fifos = mutableMapOf<String, Fifo>()
 
+    // Output fifo name -> input fifo name
+    private val fifoLoops = mutableMapOf<String, String>()
+
     // Fifo name -> leaf name -> leaf port name
-    private val fifoConnections = mutableMapOf<String, MutableList<Pair<String, String>>>()
-
-    private val namedWires = mutableMapOf<String, WireType>()
-
-    // Named wire name -> leaf name -> leaf port name
-    private val namedWireConnections = makeConntectionsMap()
+    private val fifoConnections = mutableMapOf<String, MutableList<FifoConnection>>()
 
     private fun isLeafTypeRegistered(name: String): Boolean {
         return leafCtorRegistry.containsKey(name)
@@ -70,6 +63,7 @@ class NetlistGraph {
         return leaves.containsKey(name)
     }
 
+    @Throws(IllegalArgumentException::class)
     private fun getLeaf(name: String): LeafType {
         if (!hasLeaf(name)) {
             throw IllegalArgumentException("Leaf $name does not exist")
@@ -78,6 +72,7 @@ class NetlistGraph {
         return leaves[name]!!
     }
 
+    @Throws(IllegalArgumentException::class)
     private fun getCtor(name: String): () -> LeafType {
         if (!isLeafTypeRegistered(name)) {
             throw IllegalArgumentException("Leaf type $name has not been registered")
@@ -90,6 +85,7 @@ class NetlistGraph {
         return fifos.containsKey(name)
     }
 
+    @Throws(IllegalArgumentException::class)
     private fun getFifo(name: String, direction: FifoDirection): Fifo {
         if (hasFifo(name) && fifos[name]!!.direction == direction) {
             return fifos[name]!!
@@ -98,6 +94,7 @@ class NetlistGraph {
         throw IllegalArgumentException("Fifo with name $name and direction ${direction.name} does not exist")
     }
 
+    @Throws(IllegalArgumentException::class)
     private fun getFifo(name: String): Fifo {
         if (hasFifo(name)) {
             return fifos[name]!!
@@ -108,24 +105,25 @@ class NetlistGraph {
 
     fun addFifo(name: String, direction: FifoDirection) {
         fifos[name] = Fifo(makeFifoTypeInstance(), direction)
-        fifoConnections[name] = mutableListOf<Pair<String, String>>()
+        fifoConnections[name] = mutableListOf<FifoConnection>()
     }
 
     private fun addFifoConnection(fifoName: String, direction: FifoDirection, leafName: String, leafPortName: String) {
         val fifo = getFifo(fifoName, direction)
         val leaf = getLeaf(leafName)
 
-        fifoConnections[fifoName]!!.addLast(Pair(leafName, leafPortName))
+        fifoConnections[fifoName]!!.addLast(FifoConnection(leafName, leafPortName))
     }
 
     private fun addFifoConnection(fifoName: String, leafName: String, leafPortName: String) {
         val fifo = getFifo(fifoName)
         val leaf = getLeaf(leafName)
 
-        fifoConnections[fifoName]!!.addLast(Pair(leafName, leafPortName))
+        fifoConnections[fifoName]!!.addLast(FifoConnection(leafName, leafPortName))
     }
 
     // Take data from fifos and send it to the respective wires
+    @Throws(NoSuchElementException::class)
     private fun pushDataFromFifosToLeaves(direction: FifoDirection) {
         for ((fifoName, fifo) in fifos.entries) {
             if (fifo.direction != direction) {
@@ -159,28 +157,6 @@ class NetlistGraph {
         }
     }
 
-    private fun hasNamedWire(name: String): Boolean {
-        return namedWires.containsKey(name)
-    }
-
-    private fun getNamedWire(name: String): WireType {
-        if (hasNamedWire(name)) {
-            return namedWires[name]!!
-        }
-
-        throw IllegalArgumentException("Named wire $name hasn't been added")
-    }
-
-    fun addNamedWire(name: String) {
-        namedWires[name] = WireType()
-        namedWireConnections[name] = mutableMapOf<String, String>()
-    }
-
-    fun addNamedWireConnection(wireName: String, leafName: String, leafPortName: String) {
-        val wire = getNamedWire(wireName)
-        namedWireConnections[wireName]!![leafName] = leafPortName
-    }
-
     fun addLeaf(name: String, typeName: String) {
         val ctor = getCtor(typeName)
         leaves[name] = ctor.invoke()
@@ -192,14 +168,25 @@ class NetlistGraph {
     }
 
     // Connect leaves' ports to each other
+    @Throws(IllegalArgumentException::class)
     fun conLeaf(fromName: String, fromPortName: String,
                 toName: String, toPortName: String) {
         val from = getLeaf(fromName)
         val to = getLeaf(toName)
 
         val connection = WireType()
-        from.connectPort(fromPortName, connection)
-        to.connectPort(toPortName, connection)
+
+        // One to many connection type (usually one output -> many inputs)
+        if (from.isPortConnected(fromPortName)) {
+            if (to.isPortConnected(toPortName)) {
+                throw IllegalArgumentException("Cannot connect multiple wires to one input")
+            }
+
+            to.connectPort(toPortName, from.getPort(fromPortName))
+        } else {
+            from.connectPort(fromPortName, connection)
+            to.connectPort(toPortName, connection)
+        }
     }
 
     // Connect leaf's port to immediate value
@@ -221,26 +208,21 @@ class NetlistGraph {
         addFifoConnection(fifoName, toName, toPortName)
     }
 
-    fun conLeafToNamedWire(toName: String, toPortName: String, wireName: String) {
-        val wire = getNamedWire(wireName)
-        val to = getLeaf(toName)
-        to.connectPort(toPortName, wire)
-
-    }
-
-    fun setNamedWireValue(wireName: String, imm: DataType) {
-        val wire = getNamedWire(wireName)
-        wire.send(imm)
+    fun conFifos(fromFifoName: String, toFifoName: String) {
+        val fromFifo = getFifo(fromFifoName)
+        val toFifo = getFifo(toFifoName)
+        fifoLoops[fromFifoName] = toFifoName
     }
 
     // Push immediate value into fifo
-    fun pushImmToFifo(fifoName: String, imm: DataType) {
+    fun pushDataToFifo(fifoName: String, imm: DataType) {
         val fifo = getFifo(fifoName)
         fifo.queue.addLast(imm)
     }
 
     // Pull immediate value from output fifo
-    fun pullImmFromFifo(fifoName: String): DataType {
+    @Throws(NoSuchElementException::class)
+    fun pullDataFromFifo(fifoName: String): DataType {
         val fifo = getFifo(fifoName)
         if (fifo.queue.isEmpty()) {
             throw NoSuchElementException("No elements in fifo $fifoName")
@@ -258,13 +240,16 @@ class NetlistGraph {
 
     fun evaluate() {
         pushDataFromFifosToLeaves(FifoDirection.INPUT)
-        pushDataFromFifosToLeaves(FifoDirection.LOOP)
 
         for(leafName in evalQueue) {
             getLeaf(leafName).evaluate()
         }
 
         pullDataFromLeavesToFifos(FifoDirection.OUTPUT)
-        pullDataFromLeavesToFifos(FifoDirection.LOOP)
+
+        for ((fromFifoName, toFifoName) in fifoLoops) {
+            val imm = pullDataFromFifo(fromFifoName)
+            pushDataToFifo(toFifoName, imm)
+        }
     }
 }

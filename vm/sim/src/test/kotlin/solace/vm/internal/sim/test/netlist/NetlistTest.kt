@@ -49,10 +49,10 @@ class NetlistTest {
 
         gr.conLeaf("add1", "out", "mul1", "in2")
 
-        gr.pushImmToFifo("a", 2)
-        gr.pushImmToFifo("a", 3)
-        gr.pushImmToFifo("a", 6)
-        gr.pushImmToFifo("b", 5)
+        gr.pushDataToFifo("a", 2)
+        gr.pushDataToFifo("a", 3)
+        gr.pushDataToFifo("a", 6)
+        gr.pushDataToFifo("b", 5)
 
         gr.evaluate()
 
@@ -60,7 +60,7 @@ class NetlistTest {
         assertEquals(0, gr.getFifoSize("b"))
         assertEquals(1, gr.getFifoSize("c"))
 
-        val result = gr.pullImmFromFifo("c")
+        val result = gr.pullDataFromFifo("c")
 
         assertEquals((2 + 3) * 5, result)
     }
@@ -79,12 +79,12 @@ class NetlistTest {
         gr.conLeafToFifo("mul1", "out", "c")
         gr.conLeaf("add1", "out", "mul1", "in2")
 
-        gr.pushImmToFifo("a", 2)
-        gr.pushImmToFifo("a", 3)
+        gr.pushDataToFifo("a", 2)
+        gr.pushDataToFifo("a", 3)
 
         gr.evaluate()
 
-        val result = gr.pullImmFromFifo("c")
+        val result = gr.pullDataFromFifo("c")
 
         assertEquals((2 + 3) * 5, result)
     }

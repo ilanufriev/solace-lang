@@ -5,7 +5,6 @@ import solace.vm.internal.sim.asm.instructions.*
 import solace.vm.internal.sim.graph.NetlistGraph
 import solace.vm.internal.sim.graph.NetlistGraphFactory
 import solace.vm.internal.sim.types.DataType
-import javax.xml.crypto.Data
 
 class Simulator {
     private val gr = NetlistGraphFactory.makeNetlistGraphWithRegisteredLeaves()
@@ -32,13 +31,11 @@ class Simulator {
                     gr.addFifo(i.fifoName!!, NetlistGraph.FifoDirection.OUTPUT)
                 }
                 is NewLoopFifo -> {
-                    gr.addFifo(i.fifoName!!, NetlistGraph.FifoDirection.LOOP)
-                }
-                is NewWire -> {
-                    gr.addNamedWire(i.wireName!!)
-                }
-                is SetWire -> {
-                    gr.setNamedWireValue(i.wireName!!, i.immediate!!.toInt())
+                    val loopFifoInName = i.fifoName!! + "LoopIn"
+                    val loopFifoOutName = i.fifoName!! + "LoopOut"
+                    gr.addFifo(loopFifoInName, NetlistGraph.FifoDirection.INPUT)
+                    gr.addFifo(loopFifoOutName, NetlistGraph.FifoDirection.OUTPUT)
+                    gr.conFifos(loopFifoOutName, loopFifoInName)
                 }
             }
         }
@@ -52,11 +49,11 @@ class Simulator {
     }
 
     fun pushToFifo(fifoName: String, value: DataType) {
-        gr.pushImmToFifo(fifoName, value)
+        gr.pushDataToFifo(fifoName, value)
     }
 
     fun pullFromFifo(fifoName: String): DataType {
-        return gr.pullImmFromFifo(fifoName)
+        return gr.pullDataFromFifo(fifoName)
     }
 
     fun run() {
