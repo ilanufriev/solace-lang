@@ -9,12 +9,11 @@ import solace.vm.internal.sim.asm.instructions.NewOutFifo
 import solace.vm.internal.sim.asm.instructions.Instruction
 import solace.vm.internal.sim.asm.instructions.New
 import solace.vm.internal.sim.asm.instructions.NewLoopFifo
-import solace.vm.internal.sim.asm.instructions.NewWire
-import solace.vm.internal.sim.asm.instructions.SetWire
+import solace.vm.internal.sim.asm.instructions.SetPort
 import kotlin.math.min
 
 object AsmParser {
-    const val identifierPattern = "[a-zA-Z][a-zA-Z0-9]*"
+    const val identifierPattern = "[a-zA-Z_][a-zA-Z_0-9]*"
     const val numberPattern = "[0-9]+"
     const val isInitPattern = "\\?"
     const val instructionPattern = ".${identifierPattern}"
@@ -25,7 +24,7 @@ object AsmParser {
 
     data class InstructionType(val strCode: String, val opCode: Byte)
 
-    data class EncodedInstruction(var opCode: Byte, var length: Byte, var params: String) {
+    data class EncodedInstruction(var opCode: Byte, var length: Short, var params: String) {
         override fun toString(): String {
             return opCode.toHexString() + length.toHexString() + params
         }
@@ -34,13 +33,8 @@ object AsmParser {
     val instructionTypes = mapOf<InstructionType, (() -> Instruction)?>(
         InstructionType(".new", 0x01) to ::New,
         InstructionType(".con", 0x02) to ::Con,
-        InstructionType(".fifocon", 0x03) to ::FifoCon,
-        InstructionType(".immcon", 0x04) to ::ImmCon,
-        InstructionType(".newinfifo", 0x05) to ::NewInFifo,
-        InstructionType(".newoutfifo", 0x06) to ::NewOutFifo,
-        InstructionType(".newloopfifo", 0x07) to ::NewLoopFifo,
-        InstructionType(".newwire", 0x08) to ::NewWire,
-        InstructionType(".setwire", 0x09) to ::SetWire,
+        InstructionType(".immcon", 0x03) to ::ImmCon,
+        InstructionType(".setport", 0x04) to ::SetPort
     )
 
     fun matchPatterns(s: String, matchPatterns: Array<String>): ArrayList<String?> {
@@ -67,10 +61,10 @@ object AsmParser {
         var buffer = bytecode
         while (!buffer.isEmpty()) {
             val opCode = buffer.substring(0, 2).hexToByte()
-            val length = buffer.substring(2, 4).hexToByte()
-            val params = buffer.substring(4, min(4 + length, buffer.length));
+            val length = buffer.substring(2, 6).hexToShort()
+            val params = buffer.substring(6, min(6 + length, buffer.length));
             encodedList.addLast(EncodedInstruction(opCode, length, params))
-            buffer = buffer.substring(4 + length)
+            buffer = buffer.substring(6 + length)
         }
 
         return encodedList
@@ -100,7 +94,7 @@ object AsmParser {
             encodedList.addLast(
                 EncodedInstruction(
                     instructionType.opCode,
-                    leftover.length.toByte(),
+                    leftover.length.toShort(),
                     leftover
                 )
             )

@@ -12,7 +12,7 @@ abstract class Leaf<T> {
     }
 
     @Throws(IllegalArgumentException::class)
-    fun getPort(name: String): Wire<T> {
+    open fun getPort(name: String): Wire<T> {
         if (portExists(name)) {
             return ports[name]!!
         }
@@ -21,7 +21,7 @@ abstract class Leaf<T> {
     }
 
     @Throws(IllegalArgumentException::class)
-    fun connectPort(name: String, wire: Wire<T>?) {
+    open fun connectPort(name: String, wire: Wire<T>?) {
         if (portExists(name)) {
             ports[name] = wire
             return
@@ -31,7 +31,7 @@ abstract class Leaf<T> {
     }
 
     @Throws(IllegalArgumentException::class)
-    fun isPortConnected(name: String): Boolean {
+    open fun isPortConnected(name: String): Boolean {
         if (portExists(name)) {
             return ports[name] != null
         }

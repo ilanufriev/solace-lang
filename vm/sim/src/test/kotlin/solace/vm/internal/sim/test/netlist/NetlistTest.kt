@@ -35,24 +35,27 @@ class NetlistTest {
 
     @Test fun testNetlishGraph() {
         val gr = NetlistGraphFactory.makeNetlistGraphWithRegisteredLeaves()
-        gr.addFifo("a", NetlistGraph.FifoDirection.INPUT)
-        gr.addFifo("b", NetlistGraph.FifoDirection.INPUT)
-        gr.addFifo("c", NetlistGraph.FifoDirection.OUTPUT)
+
+        gr.addLeaf("a", "Fifo")
+        gr.addLeaf("b", "Fifo")
 
         gr.addLeaf("add1", "Adder")
         gr.addLeaf("mul1", "Multiplier")
 
-        gr.conLeafToFifo("add1", "in1", "a")
-        gr.conLeafToFifo("add1", "in2", "a")
-        gr.conLeafToFifo("mul1", "in1", "b")
-        gr.conLeafToFifo("mul1", "out", "c")
+        gr.addLeaf("c", "Fifo")
 
+        gr.conLeaf("a", "out1", "add1", "in1")
+        gr.conLeaf("a", "out2", "add1", "in2")
+        gr.conLeaf("b", "out1", "mul1", "in1")
         gr.conLeaf("add1", "out", "mul1", "in2")
+        gr.conLeaf("mul1", "out", "c", "in")
 
         gr.pushDataToFifo("a", 2)
         gr.pushDataToFifo("a", 3)
         gr.pushDataToFifo("a", 6)
         gr.pushDataToFifo("b", 5)
+
+        assertEquals(3, gr.getFifoSize("a"))
 
         gr.evaluate()
 
@@ -67,20 +70,23 @@ class NetlistTest {
 
     @Test fun testNetlishGraphImmediates() {
         val gr = NetlistGraphFactory.makeNetlistGraphWithRegisteredLeaves()
-        gr.addFifo("a", NetlistGraph.FifoDirection.INPUT)
-        gr.addFifo("c", NetlistGraph.FifoDirection.OUTPUT)
+        gr.addFifo("a")
 
         gr.addLeaf("add1", "Adder")
         gr.addLeaf("mul1", "Multiplier")
 
-        gr.conLeafToFifo("add1", "in1", "a")
-        gr.conLeafToFifo("add1", "in2", "a")
+        gr.addFifo("c")
+
+        gr.conLeaf("a", "out1", "add1", "in1")
+        gr.conLeaf("a", "out2", "add1", "in2")
         gr.conLeafToImmediate("mul1", "in1", 5)
-        gr.conLeafToFifo("mul1", "out", "c")
+        gr.conLeaf("mul1", "out", "c", "in")
         gr.conLeaf("add1", "out", "mul1", "in2")
 
         gr.pushDataToFifo("a", 2)
         gr.pushDataToFifo("a", 3)
+
+        assertEquals(2, gr.getFifoSize("a"))
 
         gr.evaluate()
 
