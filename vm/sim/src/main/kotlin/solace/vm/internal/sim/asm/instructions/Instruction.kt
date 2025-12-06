@@ -10,6 +10,7 @@ class NoImmediateFound(val instr: String) : Exception("No immediate found at ins
 class IllegalInstruction(val line: String) : Exception("Illegal instruction: $line")
 
 interface Instruction {
+    val prefix: String
     var isInit: Boolean
     fun parse(s: String)
 }

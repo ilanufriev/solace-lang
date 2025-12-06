@@ -43,7 +43,7 @@ tasks.named('test') {
 
 tasks.withType(org.gradle.api.plugins.antlr.AntlrTask).configureEach {
     // Generate sources into the desired package instead of the default (no package).
-    arguments += ['-package', 'solace.compiler.antlr']
+    arguments += ['-package', 'solace.compiler.antlr', '-visitor']
 }
 
 tasks.named('compileKotlin') {

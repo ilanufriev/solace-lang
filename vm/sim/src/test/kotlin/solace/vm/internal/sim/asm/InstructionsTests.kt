@@ -14,10 +14,10 @@ class InstructionsTests {
         val con = Con()
         con.parse(".con  \$mux00@in1   \$mux01@sel")
 
-        assertEquals("mux00", con.leafName1)
-        assertEquals("mux01", con.leafName2)
-        assertEquals("in1", con.leafPortName1)
-        assertEquals("sel", con.leafPortName2)
+        assertEquals("mux00", con.fromLeafName)
+        assertEquals("mux01", con.toLeafName)
+        assertEquals("in1", con.fromLeafPortName)
+        assertEquals("sel", con.toLeafPortName)
     }
 
     @Test fun testNewInstruction() {

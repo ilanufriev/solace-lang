@@ -2,13 +2,21 @@ package solace.vm.internal.sim.asm.instructions
 
 import solace.vm.internal.sim.asm.AsmParser
 
-class ImmCon : Instruction {
+class ImmCon() : Instruction {
     // Syntax: .immcon $add01@in1 112
     //         instr leafName leafPortName Number
+    override val prefix: String = ".immcon"
     var leafName: String? = null
     var leafPortName: String? = null
     var immediate: String? = null
     override var isInit: Boolean = false
+
+    constructor(leafName: String, leafPortName: String, immediate: String, isInit: Boolean): this() {
+        this.leafName = leafName
+        this.leafPortName = leafPortName
+        this.immediate = immediate
+        this.isInit = isInit
+    }
 
     override fun parse(s: String) {
         val matches = AsmParser.matchPatterns(s, arrayOf(
@@ -29,5 +37,9 @@ class ImmCon : Instruction {
             ?: throw NoImmediateFound(s)
 
         isInit = matches[4] != null
+    }
+
+    override fun toString(): String {
+        return ".immcon \$$leafName@$leafPortName #$immediate" + (if (isInit) "?" else "");
     }
 }
