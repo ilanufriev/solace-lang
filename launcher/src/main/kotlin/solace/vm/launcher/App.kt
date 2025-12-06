@@ -3,13 +3,15 @@
  */
 package org.example
 
+import solace.vm.internal.sim.netlist.*
+
 class App {
     val greeting: String
         get() {
-            return "Hello World!"
+            return "Hello Worlda!"
         }
 }
 
 fun main() {
-    println(App().greeting)
+    val a = App(); System.err.print(a.greeting);
 }

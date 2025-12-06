@@ -12,6 +12,8 @@ repositories {
 dependencies {
     // Use the Kotlin Test integration.
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
+
+    implementation project(":vm:sim")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

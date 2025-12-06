@@ -11,6 +11,8 @@ repositories {
 dependencies {
     // Use the Kotlin Test integration.
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1"
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
