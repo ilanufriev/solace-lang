@@ -1,0 +1,18 @@
+package solace.vm.internal.sim.netlist
+
+import solace.vm.internal.sim.types.DataType
+import solace.vm.internal.sim.types.LeafType
+
+class Divider : LeafType() {
+    override val ports: MutableMap<String, Wire<DataType>?> = mutableMapOf(
+        "in1" to null,
+        "in2" to null,
+        "out" to null
+    )
+
+    override fun evaluate() {
+        val a = getPort("in1").receive() ?: 0
+        val b = getPort("in2").receive() ?: 1
+        getPort("out").send(a / b)
+    }
+}
