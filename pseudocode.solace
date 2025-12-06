@@ -4,22 +4,15 @@ node Counter : hardware (
     self: loop;
 ) {
     init {
-        x = 5;
-        out <- x;
-
+        loop <- 0;
     }
 
     run {
-        x = 0;
+        x = $loop + 1;
+
         // отправляем текущее значение в выходной FIFO
         numbers <- x;
-
-        // увеличиваем счётчик
-        x = x + 1;
-
-        // при желании можно использовать self FIFO
         loop <- x;
-        tmp = $loop;
     }
 }
 
