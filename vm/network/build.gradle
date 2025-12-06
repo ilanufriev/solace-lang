@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
 
     id 'java-library'
+    id 'application'
 }
 
 repositories {
@@ -11,6 +12,12 @@ repositories {
 dependencies {
     // Use the Kotlin Test integration.
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    implementation project(':vm:sim')
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1"
+}
+
+application {
+    mainClass = 'solace.network.MainKt'
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
