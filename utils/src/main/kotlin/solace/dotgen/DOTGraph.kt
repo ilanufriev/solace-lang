@@ -9,9 +9,9 @@ class DOTConnection(
 ) {
     fun getString(): String {
         return if (sourceNodeName == destinationNodeName && sourcePortName == destinationPortName) {
-            "$sourceNodeName -> $destinationNodeName [label=$sourcePortName];"
+            "$sourceNodeName -> $destinationNodeName [label=\"$sourcePortName\"];"
         } else {
-            "$sourceNodeName -> $destinationNodeName [taillabel=$sourcePortName,headlabel=$destinationPortName];"
+            "$sourceNodeName -> $destinationNodeName [taillabel=\"$sourcePortName\",headlabel=\"$destinationPortName\"];"
         }
     }
 }
