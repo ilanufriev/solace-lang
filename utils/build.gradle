@@ -12,8 +12,6 @@ repositories {
 dependencies {
     // Use the Kotlin Test integration.
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
-
-    implementation project(":vm:sim")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -25,7 +23,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = 'solace.utils.dotgen.RunnerKt'
+    mainClass = 'solace.dotgen.RunnerKt'
 }
 
 tasks.named('test') {
