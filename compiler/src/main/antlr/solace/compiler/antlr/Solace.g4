@@ -82,9 +82,8 @@ statement
 // объявляются без ключевого слова (интерпретируются как неизменяемые).
 hardwareStatement
     : hardwareVarDeclStmt
-    | fifoWriteStmt
+    | hardwareFifoWriteStmt
     | printStmt
-    | hardwareIfStmt
     | exprStmt
     | SEMI
     ;
@@ -97,6 +96,7 @@ varDeclStmt
 // x = expr; (hardware init/run: неявное объявление int)
 hardwareVarDeclStmt
     : ID ASSIGN expr SEMI
+    | ID ASSIGN hardwareIfStmt SEMI
     ;
 
 type
@@ -107,6 +107,11 @@ type
 // x = expr;
 assignStmt
     : ID ASSIGN expr SEMI
+    ;
+
+hardwareFifoWriteStmt
+    : ID WRITE_ARROW expr SEMI
+    | ID WRITE_ARROW hardwareIfStmt SEMI
     ;
 
 // fifoName <- expr;
@@ -124,9 +129,8 @@ ifStmt
     : IF LPAREN expr RPAREN block (ELSE block)?
     ;
 
-// if (cond) { ... } else { ... } в hardware-блоках (с неявными int)
 hardwareIfStmt
-    : IF LPAREN expr RPAREN hardwareBlock (ELSE hardwareBlock)?
+    : IF LPAREN expr RPAREN expr ELSE expr
     ;
 
 // "голое" выражение как оператор

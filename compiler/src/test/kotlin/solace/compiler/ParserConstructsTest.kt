@@ -39,6 +39,29 @@ class ParserConstructsTest {
     }
 
     @Test
+    fun parsesHardwareIfStatements() {
+        val (parser, tree) = parse(
+            $$"""
+            node IO : hardware (
+                in: inp;
+                out: outp;
+            ) {
+                init { }
+                run {
+                    x = 2;
+                    v = if($inp == 0) 25 else (x >> 2) * 3;
+                    outp <- v;
+                }
+            }
+            """.trimMargin()
+        )
+
+        val pretty = prettyTree(tree, parser)
+        assertTrue(hasNode<SolaceParser.HardwareFifoWriteStmtContext>(tree), "Should have parsed hardware fifo write")
+        assertTrue(hasNode<SolaceParser.HardwareIfStmtContext>(tree), "Should have parsed hardware if statement")
+    }
+
+    @Test
     fun parsesFifoReadWriteAndSelfOptional() {
         val (parser, tree) = parse(
             """
@@ -59,7 +82,7 @@ class ParserConstructsTest {
         )
 
         val pretty = prettyTree(tree, parser)
-        assertTrue(hasNode<SolaceParser.FifoWriteStmtContext>(tree), "Should parse fifo write statement")
+        assertTrue(hasNode<SolaceParser.HardwareFifoWriteStmtContext>(tree), "Should parse fifo write statement")
         assertTrue(hasNode<SolaceParser.FifoReadExprContext>(tree), "Should parse fifo read expression")
     }
 
