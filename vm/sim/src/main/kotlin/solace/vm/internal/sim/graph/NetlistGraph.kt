@@ -207,14 +207,6 @@ class NetlistGraph {
         }
 
         for (leafName in evalQueue) {
-            val leaf = getLeaf(leafName)
-            //if (leaf is Fifo) {
-                // if (leaf.isPortConnected("in")) {
-                //    leaf.pullFromInput()
-                //}
-                //leaf.pushToOutputs()
-            //}
-
             getLeaf(leafName).evaluate()
         }
 
