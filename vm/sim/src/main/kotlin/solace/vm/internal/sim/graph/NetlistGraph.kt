@@ -1,6 +1,7 @@
 package solace.vm.internal.sim.graph
 
 import solace.vm.internal.sim.netlist.*
+import solace.vm.internal.sim.netlist.util.Port
 import solace.vm.internal.sim.types.*
 
 object NetlistGraphFactory {
@@ -33,6 +34,11 @@ fun makeFifoTypeInstance(): FifoType {
 
 // This is the main VM part, a graph engine
 class NetlistGraph {
+    interface GraphSpec
+
+    data class ImmSpec(val imm: String) : GraphSpec
+    data class PortSpec(val leafName: String, val leafPortName: String) : GraphSpec
+
     // Nodes of the graph (called Leaves as in Vivado)
     private val leaves = mutableMapOf<String, LeafType>()
 
@@ -41,6 +47,8 @@ class NetlistGraph {
 
     // Evaluation queue, leaves in this queue are evaluated in the order they were added to graph
     private val evalQueue = arrayListOf<String>()
+
+    private val connections = mutableMapOf<GraphSpec, MutableList<PortSpec>>()
 
     private fun isLeafTypeRegistered(name: String): Boolean {
         return leafCtorRegistry.containsKey(name)
@@ -141,14 +149,20 @@ class NetlistGraph {
         leafCtorRegistry[name] = ref
     }
 
+    fun addConnection(from: GraphSpec, to: PortSpec) {
+        if (!connections.contains(from)) {
+            connections[from] = mutableListOf<PortSpec>()
+        }
+
+        connections[from]!!.addLast(to)
+    }
+
     // Connect leaves' ports to each other
     @Throws(IllegalArgumentException::class)
     fun conLeaf(fromName: String, fromPortName: String,
                 toName: String, toPortName: String) {
         val from = getLeaf(fromName)
         val to = getLeaf(toName)
-
-        val connection = WireType()
 
         // One to many connection type (usually one output -> many inputs)
         if (from.isPortConnected(fromPortName)) {
@@ -158,9 +172,15 @@ class NetlistGraph {
 
             to.connectPort(toPortName, from.getPort(fromPortName))
         } else {
+            val connection = WireType()
             from.connectPort(fromPortName, connection)
             to.connectPort(toPortName, connection)
         }
+
+        addConnection(
+            PortSpec(fromName, fromPortName),
+            PortSpec(toName, toPortName)
+        )
     }
 
     // Connect leaf's port to immediate value
@@ -170,13 +190,11 @@ class NetlistGraph {
         val connection = WireType()
         connection.send(imm)
         to.connectPort(toPortName, connection)
-    }
 
-    // Sends an immediate value into leaf port's wire. Should only be used with
-    // leaf ports that are connected to immediate values
-    fun setLeafPortToImmediate(leafName: String, leafPortName: String, imm: DataType) {
-        val leaf = getLeaf(leafName)
-        leaf.getPort(leafPortName).send(imm)
+        addConnection(
+            ImmSpec(imm.toString()),
+            PortSpec(toName, toPortName)
+        )
     }
 
     fun pushDataToFifo(fifoName: String, data:  DataType) {
@@ -193,6 +211,23 @@ class NetlistGraph {
     fun getFifoSize(fifoName: String): Int {
         val fifo = getFifo(fifoName) as Fifo
         return fifo.queue.size
+    }
+
+    fun getConnections(): Map<GraphSpec, List<PortSpec>> {
+        return connections
+    }
+
+    fun connectionExists(fromName: String, fromPortName: String, toName: String, toPortName: String): Boolean {
+        val toList = connections[PortSpec(fromName, fromPortName)]
+            ?: return false
+
+        return toList.contains(PortSpec(toName, toPortName))
+    }
+
+    fun connectionExists(immediate: String, toName: String, toPortName: String): Boolean {
+        val toList = connections[ImmSpec(immediate)]
+            ?: return false
+        return toList.contains(PortSpec(toName, toPortName))
     }
 
     fun evaluate() {

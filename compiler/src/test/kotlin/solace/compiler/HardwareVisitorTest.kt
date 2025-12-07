@@ -52,10 +52,6 @@ class HardwareVisitorTest {
         assertTrue(node.selves.contains("loop"))
         assertTrue(node.declaredRegisters.contains("x"))
 
-        // println("=== hardwareVisitorBasicTest ===")
-        // println(node.initCode.joinToString("\n"))
-        // println(node.runCode.joinToString("\n"))
-
         val byteCodeInstrs = mutableListOf<EncodedInstruction>()
         byteCodeInstrs.addAll(AsmParser.encodeInstructions(node.initCode))
         byteCodeInstrs.addAll(AsmParser.encodeInstructions(node.runCode))
@@ -123,10 +119,6 @@ class HardwareVisitorTest {
         assertTrue(node.outs.contains("numbers"))
         assertTrue(node.selves.contains("loop"))
         assertTrue(node.declaredRegisters.contains("x"))
-
-        // println("=== hardwareVisitorNegativeNumbersTest ===")
-        // println(node.initCode.joinToString("\n"))
-        // println(node.runCode.joinToString("\n"))
 
         val byteCodeInstrs = mutableListOf<EncodedInstruction>()
         byteCodeInstrs.addAll(AsmParser.encodeInstructions(node.initCode))
@@ -211,9 +203,6 @@ class HardwareVisitorTest {
         assertEquals(1, nodeList.size)
 
         val node = nodeList.first()
-
-        println(node.initCode.joinToString("\n"))
-        println(node.runCode.joinToString("\n"))
 
         val byteCodeInstrs = mutableListOf<EncodedInstruction>()
         byteCodeInstrs.addAll(AsmParser.encodeInstructions(node.initCode))
