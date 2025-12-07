@@ -81,7 +81,7 @@ object AsmParser {
             instrStrings.addLast(instr.toString())
         }
 
-        return encodeInstructionsFromStringList(instrStrings)
+        return encodeInstructionsFromStringList(instrStrings.map { s -> removeWhitespace(s) })
     }
 
     fun encodeInstructionsFromString(source: String): List<EncodedInstruction> {
