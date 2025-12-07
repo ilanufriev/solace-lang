@@ -6,12 +6,12 @@ package solace.vm.internal.harv
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class VirtualMachineTest {
+class StackMachineTest {
 
-    fun p(builderFun: (ProgramBuilder) -> List<Int>): VirtualMachine {
+    fun p(builderFun: (ProgramBuilder) -> List<Int>): StackMachine {
         val program = builderFun(ProgramBuilder())
         val programMemory = ListProgramMemory(program)
-        val vm = VirtualMachine(programMemory)
+        val vm = StackMachine(programMemory)
 
         vm.run()
 
