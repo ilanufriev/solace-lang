@@ -19,6 +19,9 @@ object NetlistGraphFactory {
         gr.registerLeafCtor("Demux2", ::Demux2)
         gr.registerLeafCtor("Register", ::Register)
         gr.registerLeafCtor("Fifo", ::Fifo)
+        gr.registerLeafCtor("Divider", ::Divider)
+        gr.registerLeafCtor("RBitShift", ::RBitShift)
+        gr.registerLeafCtor("LBitShift", ::LBitShift)
 
         return gr
     }

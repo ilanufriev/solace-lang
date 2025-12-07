@@ -1,0 +1,48 @@
+/// Minimal hardware-only example: pulse generator + accumulator.
+///
+/// Pulse produces a monotonic counter value and feeds it into Accumulator.
+/// Accumulator keeps a running sum and exposes both the latest input and the sum.
+
+node Pulse : hardware (
+    out: tick;
+    self: loop;
+) {
+    init {
+        // seed the counter
+        loop <- 0;
+    }
+
+    run {
+        // read last value from self FIFO, increment, emit
+        cur = $loop;
+        next = cur + 1;
+        tick <- next;
+        loop <- next;
+    }
+}
+
+node Accumulator : hardware (
+    in: inc;
+    out: last, total;
+    self: state;
+) { 
+    init {
+        // initialize sum
+        state <- 0;
+    }
+
+    run {
+        // block for next increment
+        v = $inc;
+        s = $state;
+
+        last <- v;
+        sum = s + v;
+        total <- sum;
+        state <- sum;
+    }
+}
+
+network {
+    Pulse.tick -> Accumulator.inc;
+}

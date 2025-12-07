@@ -1,0 +1,73 @@
+/// Аппаратный счётчик: генерирует 0,1,2,3,...
+node Counter : hardware (
+    out: numbers;
+    self: loop;
+) {
+    init {
+        loop <- 0;
+    }
+
+    run {
+        x = $loop + 1;
+
+        // отправляем текущее значение в выходной FIFO
+        numbers <- x;
+        loop <- x;
+    }
+}
+
+/// Аппаратный блок: сдвигает число влево на 1 бит (умножает на 2)
+node BitShifter : hardware (
+    in:  inNum;
+    out: shifted;
+) {
+    init {
+        // ничего не делаем
+    }
+
+    run {
+        // блокирующее чтение из входного FIFO
+        n = $inNum;
+
+        // битовый сдвиг влево
+        res = n << 1;
+
+        // отправляем результат
+        shifted <- res;
+    }
+}
+
+/// Программный узел: классифицирует и печатает
+node Classifier : software (
+    in:  inVal;
+    self: selfVal;
+) {
+    init {
+        string small = "SMALL: ";
+        string big   = "BIG: ";
+    }
+
+    run {
+        // читаем значение из FIFO
+        int v = $inVal;
+
+        // простое условие
+        if (v < 10) {
+            print(small + v);
+        } else {
+            print(big + v);
+        }
+
+        // пример использования $fifo? (семантика в ВМ)
+        int flag = $selfVal?;
+        if (flag == 1) {
+            print("SELF FLAG");
+        }
+    }
+}
+
+/// Глобальная сеть Кана (единственная, без имени)
+network {
+    Counter.numbers   -> BitShifter.inNum;
+    BitShifter.shifted -> Classifier.inVal;
+}
