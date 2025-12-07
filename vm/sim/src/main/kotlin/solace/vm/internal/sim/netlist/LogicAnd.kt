@@ -11,8 +11,8 @@ class LogicAnd() : LeafType() {
     )
 
     override fun evaluate() {
-        val a = Converter.intToBoolean(getPort("in1").receive() ?: 0)
-        val b = Converter.intToBoolean(getPort("in2").receive() ?: 0)
+        val a = Converter.intToBoolean(getPort("in1").receive() ?: return)
+        val b = Converter.intToBoolean(getPort("in2").receive() ?: return)
         getPort("out").send(Converter.booleanToInt(a && b))
     }
 }

@@ -34,6 +34,6 @@ class New() : Instruction {
     }
 
     override fun toString(): String {
-        return ".new %$leafType \$$leafName"
+        return ".new %$leafType \$$leafName ${if (isInit) "?" else ""}"
     }
 }

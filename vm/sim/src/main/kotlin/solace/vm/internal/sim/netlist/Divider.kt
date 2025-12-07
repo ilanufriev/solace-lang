@@ -11,8 +11,8 @@ class Divider : LeafType() {
     )
 
     override fun evaluate() {
-        val a = getPort("in1").receive() ?: 0
-        val b = getPort("in2").receive() ?: 1
+        val a = getPort("in1").receive() ?: return
+        val b = getPort("in2").receive() ?: return
         getPort("out").send(a / b)
     }
 }

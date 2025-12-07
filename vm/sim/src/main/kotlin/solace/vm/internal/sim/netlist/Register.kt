@@ -10,6 +10,6 @@ class Register : LeafType() {
     )
 
     override fun evaluate() {
-        getPort("out").send(getPort("in").receive() ?: 0)
+        getPort("out").send(getPort("in").receive() ?: return)
     }
 }

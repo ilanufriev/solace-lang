@@ -40,6 +40,6 @@ class ImmCon() : Instruction {
     }
 
     override fun toString(): String {
-        return ".immcon \$$leafName@$leafPortName #$immediate" + (if (isInit) "?" else "");
+        return ".immcon \$$leafName@$leafPortName #$immediate " + (if (isInit) "?" else "");
     }
 }

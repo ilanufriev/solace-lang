@@ -5,7 +5,6 @@ import solace.vm.internal.sim.asm.instructions.IllegalInstruction
 import solace.vm.internal.sim.asm.instructions.ImmCon
 import solace.vm.internal.sim.asm.instructions.Instruction
 import solace.vm.internal.sim.asm.instructions.New
-import solace.vm.internal.sim.asm.instructions.SetPort
 import kotlin.math.min
 
 data class InstructionType(val strCode: String, val opCode: Byte)
@@ -82,15 +81,15 @@ object AsmParser {
             instrStrings.addLast(instr.toString())
         }
 
-        return encodeInstructions(instrStrings)
+        return encodeInstructionsFromStringList(instrStrings)
     }
 
-    fun encodeInstructions(source: String): List<EncodedInstruction> {
+    fun encodeInstructionsFromString(source: String): List<EncodedInstruction> {
         val instrStrings = splitIntoInstrStrings(source).map { s -> removeWhitespace(s) };
-        return encodeInstructions(instrStrings)
+        return encodeInstructionsFromStringList(instrStrings)
     }
 
-    fun encodeInstructions(instrStrings: Iterable<String>): List<EncodedInstruction> {
+    fun encodeInstructionsFromStringList(instrStrings: Iterable<String>): List<EncodedInstruction> {
         val encodedList = mutableListOf<EncodedInstruction>()
         for (instrString in instrStrings) {
             val (match, leftover) = matchAndTrim(instrString, Regex(instructionPattern))
@@ -176,7 +175,7 @@ object AsmParser {
         return parseIntoInstrs(instrStringList)
     }
 
-    private fun splitIntoInstrStrings(source: String): List<String> {
+    fun splitIntoInstrStrings(source: String): List<String> {
         val instrList = mutableListOf<String>()
 
         var first = source.indexOf('.', 0)
