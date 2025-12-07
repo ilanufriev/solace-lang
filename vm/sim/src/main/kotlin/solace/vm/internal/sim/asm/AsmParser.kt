@@ -1,20 +1,23 @@
 package solace.vm.internal.sim.asm
 
 import solace.vm.internal.sim.asm.instructions.Con
-import solace.vm.internal.sim.asm.instructions.FifoCon
 import solace.vm.internal.sim.asm.instructions.IllegalInstruction
 import solace.vm.internal.sim.asm.instructions.ImmCon
-import solace.vm.internal.sim.asm.instructions.NewInFifo
-import solace.vm.internal.sim.asm.instructions.NewOutFifo
 import solace.vm.internal.sim.asm.instructions.Instruction
 import solace.vm.internal.sim.asm.instructions.New
-import solace.vm.internal.sim.asm.instructions.NewLoopFifo
-import solace.vm.internal.sim.asm.instructions.SetPort
 import kotlin.math.min
+
+data class InstructionType(val strCode: String, val opCode: Byte)
+
+data class EncodedInstruction(var opCode: Byte, var length: Short, var params: String) {
+    override fun toString(): String {
+        return opCode.toHexString() + length.toHexString() + params
+    }
+}
 
 object AsmParser {
     const val identifierPattern = "[a-zA-Z_][a-zA-Z_0-9]*"
-    const val numberPattern = "[0-9]+"
+    const val numberPattern = "[-]?[0-9]+"
     const val isInitPattern = "\\?"
     const val instructionPattern = ".${identifierPattern}"
     const val leafTypePattern = "%${identifierPattern}"
@@ -22,19 +25,10 @@ object AsmParser {
     const val leafPortPattern = "@${identifierPattern}"
     const val immediateValuePattern = "#${numberPattern}"
 
-    data class InstructionType(val strCode: String, val opCode: Byte)
-
-    data class EncodedInstruction(var opCode: Byte, var length: Short, var params: String) {
-        override fun toString(): String {
-            return opCode.toHexString() + length.toHexString() + params
-        }
-    }
-
     val instructionTypes = mapOf<InstructionType, (() -> Instruction)?>(
         InstructionType(".new", 0x01) to ::New,
         InstructionType(".con", 0x02) to ::Con,
         InstructionType(".immcon", 0x03) to ::ImmCon,
-        InstructionType(".setport", 0x04) to ::SetPort
     )
 
     fun matchPatterns(s: String, matchPatterns: Array<String>): ArrayList<String?> {
@@ -70,7 +64,7 @@ object AsmParser {
         return encodedList
     }
 
-    fun decodeInstructions(bytecode: List<EncodedInstruction>): List<String> {
+    fun decodeInstructions(bytecode: Iterable<EncodedInstruction>): List<String> {
         val decodedList = mutableListOf<String>()
         for (einstr in bytecode) {
             val itype = matchOpCode(einstr.opCode)
@@ -81,9 +75,22 @@ object AsmParser {
         return decodedList
     }
 
-    fun encodeInstructions(source: String): List<EncodedInstruction> {
-        val encodedList = mutableListOf<EncodedInstruction>()
+    fun encodeInstructions(instrs: Iterable<Instruction>): List<EncodedInstruction> {
+        val instrStrings = mutableListOf<String>()
+        for (instr in instrs) {
+            instrStrings.addLast(instr.toString())
+        }
+
+        return encodeInstructionsFromStringList(instrStrings.map { s -> removeWhitespace(s) })
+    }
+
+    fun encodeInstructionsFromString(source: String): List<EncodedInstruction> {
         val instrStrings = splitIntoInstrStrings(source).map { s -> removeWhitespace(s) };
+        return encodeInstructionsFromStringList(instrStrings)
+    }
+
+    fun encodeInstructionsFromStringList(instrStrings: Iterable<String>): List<EncodedInstruction> {
+        val encodedList = mutableListOf<EncodedInstruction>()
         for (instrString in instrStrings) {
             val (match, leftover) = matchAndTrim(instrString, Regex(instructionPattern))
             match
@@ -147,7 +154,7 @@ object AsmParser {
         return matches.maxBy { (i, c) -> i.strCode.length }.key
     }
 
-    fun parseIntoInstrs(source: List<String>): List<Instruction> {
+    fun parseIntoInstrs(source: Iterable<String>): List<Instruction> {
         val instrList = mutableListOf<Instruction>()
 
         for (instrString in source) {
@@ -168,7 +175,7 @@ object AsmParser {
         return parseIntoInstrs(instrStringList)
     }
 
-    private fun splitIntoInstrStrings(source: String): List<String> {
+    fun splitIntoInstrStrings(source: String): List<String> {
         val instrList = mutableListOf<String>()
 
         var first = source.indexOf('.', 0)

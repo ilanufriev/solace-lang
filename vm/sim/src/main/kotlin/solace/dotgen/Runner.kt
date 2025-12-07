@@ -14,7 +14,7 @@ class App {
                 .con $x@out $counter@in
              */
 
-            return DOTNetwork(arrayOf<DOTConnection>(
+            return DOTNetwork(listOf<DOTConnection>(
                 DOTConnection(DNP("counter", "out"), DNP("add", "in1")),
                 DOTConnection(DNP("1", ""), DNP("add", "in2")),
                 DOTConnection(DNP("add", "out"), DNP("x", "in")),

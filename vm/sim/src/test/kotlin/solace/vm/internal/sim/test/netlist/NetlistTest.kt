@@ -5,6 +5,7 @@ import solace.vm.internal.sim.graph.NetlistGraphFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import solace.vm.internal.sim.netlist.*
+import kotlin.test.assertTrue
 
 class NetlistTest {
     @Test fun testConnections() {
@@ -93,5 +94,27 @@ class NetlistTest {
         val result = gr.pullDataFromFifo("c")
 
         assertEquals((2 + 3) * 5, result)
+    }
+
+    @Test fun testNetlistGraphConnectionBuilding() {
+        val gr = NetlistGraphFactory.makeNetlistGraphWithRegisteredLeaves()
+        gr.addFifo("a")
+
+        gr.addLeaf("add1", "Adder")
+        gr.addLeaf("mul1", "Multiplier")
+
+        gr.addFifo("c")
+
+        gr.conLeaf("a", "out1", "add1", "in1")
+        gr.conLeaf("a", "out2", "add1", "in2")
+        gr.conLeafToImmediate("mul1", "in1", 5)
+        gr.conLeaf("mul1", "out", "c", "in")
+        gr.conLeaf("add1", "out", "mul1", "in2")
+
+        assertTrue(gr.connectionExists("a", "out1", "add1", "in1"))
+        assertTrue(gr.connectionExists("a", "out2", "add1", "in2"))
+        assertTrue(gr.connectionExists("5", "mul1", "in1"))
+        assertTrue(gr.connectionExists("mul1", "out", "c", "in"))
+        assertTrue(gr.connectionExists("add1", "out", "mul1", "in2"))
     }
 }

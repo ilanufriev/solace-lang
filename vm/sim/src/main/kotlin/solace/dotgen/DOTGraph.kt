@@ -26,7 +26,7 @@ class DOTConnection(
 }
 
 
-class DOTNetwork(val connections: Array<DOTConnection>) {
+class DOTNetwork(val connections: List<DOTConnection>) {
     override fun toString(): String = (
         arrayOf(
             "digraph Network {\n",

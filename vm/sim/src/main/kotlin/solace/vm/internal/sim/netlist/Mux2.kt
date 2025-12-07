@@ -11,9 +11,9 @@ class Mux2() : LeafType() {
     )
 
     override fun evaluate() {
-        val a = getPort("in0").receive() ?: 0
-        val b = getPort("in1").receive() ?: 0
-        val s = getPort("sel").receive() ?: 0
+        val a = getPort("in0").receive() ?: return
+        val b = getPort("in1").receive() ?: return
+        val s = getPort("sel").receive() ?: return
         getPort("out").send(if (s == 0) a else b)
     }
 

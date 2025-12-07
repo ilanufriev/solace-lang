@@ -3,35 +3,42 @@ package solace.vm.internal.sim.netlist
 import solace.vm.internal.sim.types.*
 
 class Fifo : LeafType() {
-    class FifoIsEmptyException(val port: String) : NoSuchElementException("Fifo is empty. Could not push to port $port")
+    class FifoIsEmptyException() : NoSuchElementException("Fifo is empty")
     class FifoReceivedNullException() : IllegalArgumentException("Fifo received null on input")
 
     var queue = mutableListOf<DataType>()
     override val ports: MutableMap<String, Wire<DataType>?> = mutableMapOf(
-        "in" to null,
         "size" to null
     )
 
     @Throws(FifoIsEmptyException::class)
     fun pushToOutputs() {
-        for ((portName, _) in ports) {
-            if (portName == "in" || portName == "size") {
-                continue
-            }
+        val outputs = ports.filter {
+            (portName, _) -> portName.startsWith("out")
+        }
 
-            if (queue.isEmpty()) {
-                throw FifoIsEmptyException(portName)
-            }
+        if (outputs.keys.size > queue.size) {
+            throw FifoIsEmptyException()
+        }
 
+        for ((portName, _) in outputs) {
             getPort(portName).send(queue.removeAt(0))
         }
     }
 
     @Throws(FifoReceivedNullException::class)
-    fun pullFromInput() {
-        queue.addLast(getPort("in").receive()
-            ?: return
-        )
+    fun pullFromInputs() {
+        val inputs = ports.filter {
+            (portName, _) -> portName.startsWith("in")
+        }
+
+        for((portName, _) in inputs) {
+            if (!portName.startsWith("in")) {
+                continue
+            }
+            val value = getPort(portName).receive() ?: continue
+            queue.addLast(value)
+        }
     }
 
     fun pushToFifoDirectly(data: DataType) {
@@ -41,7 +48,7 @@ class Fifo : LeafType() {
     @Throws(FifoIsEmptyException::class)
     fun pullFromFifoDirectly(): DataType {
         if (queue.isEmpty()) {
-            throw FifoIsEmptyException("direct pull")
+            throw FifoIsEmptyException()
         }
 
         return queue.removeAt(0)

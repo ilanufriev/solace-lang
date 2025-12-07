@@ -81,7 +81,7 @@ private fun solbc(nodeType: NodeType, initCode: String = "", runCode: String): B
 }
 
 private fun encodeAsm(source: String): String =
-    AsmParser.encodeInstructions(source.trimIndent()).joinToString("")
+    AsmParser.encodeInstructionsFromString(source.trimIndent()).joinToString("")
 
 private fun pulseRun(): String = encodeAsm(
     """

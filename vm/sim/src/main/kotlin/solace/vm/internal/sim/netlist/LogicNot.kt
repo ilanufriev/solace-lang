@@ -10,7 +10,7 @@ class LogicNot() : LeafType() {
     )
 
     override fun evaluate() {
-        val a = Converter.intToBoolean(getPort("in").receive() ?: 0)
+        val a = Converter.intToBoolean(getPort("in").receive() ?: return)
         getPort("out").send(Converter.booleanToInt(!a))
     }
 }

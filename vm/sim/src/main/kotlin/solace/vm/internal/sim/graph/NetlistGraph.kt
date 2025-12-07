@@ -1,5 +1,6 @@
 package solace.vm.internal.sim.graph
 
+import solace.dotgen.*
 import solace.vm.internal.sim.netlist.*
 import solace.vm.internal.sim.types.*
 
@@ -7,21 +8,21 @@ object NetlistGraphFactory {
     fun makeNetlistGraphWithRegisteredLeaves(): NetlistGraph {
         val gr = NetlistGraph()
 
-        gr.registerLeafCtor("Adder", ::Adder)
-        gr.registerLeafCtor("CmpEq", ::CmpEq)
-        gr.registerLeafCtor("CmpLeq", ::CmpLeq)
-        gr.registerLeafCtor("CmpLess", ::CmpLess)
-        gr.registerLeafCtor("LogicAnd", ::LogicAnd)
-        gr.registerLeafCtor("LogicOr", ::LogicOr)
-        gr.registerLeafCtor("LogicNot", ::LogicNot)
-        gr.registerLeafCtor("Multiplier", ::Multiplier)
-        gr.registerLeafCtor("Mux2", ::Mux2)
-        gr.registerLeafCtor("Demux2", ::Demux2)
-        gr.registerLeafCtor("Register", ::Register)
-        gr.registerLeafCtor("Fifo", ::Fifo)
-        gr.registerLeafCtor("Divider", ::Divider)
-        gr.registerLeafCtor("RBitShift", ::RBitShift)
-        gr.registerLeafCtor("LBitShift", ::LBitShift)
+        gr.registerLeafCtor(Adder::class.simpleName!!, ::Adder)
+        gr.registerLeafCtor(CmpEq::class.simpleName!!, ::CmpEq)
+        gr.registerLeafCtor(CmpLeq::class.simpleName!!, ::CmpLeq)
+        gr.registerLeafCtor(CmpLess::class.simpleName!!, ::CmpLess)
+        gr.registerLeafCtor(LogicAnd::class.simpleName!!, ::LogicAnd)
+        gr.registerLeafCtor(LogicOr::class.simpleName!!, ::LogicOr)
+        gr.registerLeafCtor(LogicNot::class.simpleName!!, ::LogicNot)
+        gr.registerLeafCtor(Multiplier::class.simpleName!!, ::Multiplier)
+        gr.registerLeafCtor(Mux2::class.simpleName!!, ::Mux2)
+        gr.registerLeafCtor(Demux2::class.simpleName!!, ::Demux2)
+        gr.registerLeafCtor(Register::class.simpleName!!, ::Register)
+        gr.registerLeafCtor(Fifo::class.simpleName!!, ::Fifo)
+        gr.registerLeafCtor(Divider::class.simpleName!!, ::Divider)
+        gr.registerLeafCtor(RBitShift::class.simpleName!!, ::RBitShift)
+        gr.registerLeafCtor(LBitShift::class.simpleName!!, ::LBitShift)
 
         return gr
     }
@@ -33,6 +34,11 @@ fun makeFifoTypeInstance(): FifoType {
 
 // This is the main VM part, a graph engine
 class NetlistGraph {
+    interface GraphSpec
+
+    data class ImmSpec(val imm: String) : GraphSpec
+    data class PortSpec(val leafName: String, val leafPortName: String) : GraphSpec
+
     // Nodes of the graph (called Leaves as in Vivado)
     private val leaves = mutableMapOf<String, LeafType>()
 
@@ -41,6 +47,8 @@ class NetlistGraph {
 
     // Evaluation queue, leaves in this queue are evaluated in the order they were added to graph
     private val evalQueue = arrayListOf<String>()
+
+    private val connections = mutableMapOf<GraphSpec, MutableList<PortSpec>>()
 
     private fun isLeafTypeRegistered(name: String): Boolean {
         return leafCtorRegistry.containsKey(name)
@@ -127,7 +135,7 @@ class NetlistGraph {
                 continue
             }
 
-            fifo.pullFromInput()
+            fifo.pullFromInputs()
         }
     }
 
@@ -141,14 +149,20 @@ class NetlistGraph {
         leafCtorRegistry[name] = ref
     }
 
+    fun addConnection(from: GraphSpec, to: PortSpec) {
+        if (!connections.contains(from)) {
+            connections[from] = mutableListOf<PortSpec>()
+        }
+
+        connections[from]!!.addLast(to)
+    }
+
     // Connect leaves' ports to each other
     @Throws(IllegalArgumentException::class)
     fun conLeaf(fromName: String, fromPortName: String,
                 toName: String, toPortName: String) {
         val from = getLeaf(fromName)
         val to = getLeaf(toName)
-
-        val connection = WireType()
 
         // One to many connection type (usually one output -> many inputs)
         if (from.isPortConnected(fromPortName)) {
@@ -158,9 +172,15 @@ class NetlistGraph {
 
             to.connectPort(toPortName, from.getPort(fromPortName))
         } else {
+            val connection = WireType()
             from.connectPort(fromPortName, connection)
             to.connectPort(toPortName, connection)
         }
+
+        addConnection(
+            PortSpec(fromName, fromPortName),
+            PortSpec(toName, toPortName)
+        )
     }
 
     // Connect leaf's port to immediate value
@@ -170,13 +190,11 @@ class NetlistGraph {
         val connection = WireType()
         connection.send(imm)
         to.connectPort(toPortName, connection)
-    }
 
-    // Sends an immediate value into leaf port's wire. Should only be used with
-    // leaf ports that are connected to immediate values
-    fun setLeafPortToImmediate(leafName: String, leafPortName: String, imm: DataType) {
-        val leaf = getLeaf(leafName)
-        leaf.getPort(leafPortName).send(imm)
+        addConnection(
+            ImmSpec(imm.toString()),
+            PortSpec(toName, toPortName)
+        )
     }
 
     fun pushDataToFifo(fifoName: String, data:  DataType) {
@@ -195,21 +213,57 @@ class NetlistGraph {
         return fifo.queue.size
     }
 
+    fun getConnections(): Map<GraphSpec, List<PortSpec>> {
+        return connections
+    }
+
+    fun connectionExists(fromName: String, fromPortName: String, toName: String, toPortName: String): Boolean {
+        val toList = connections[PortSpec(fromName, fromPortName)]
+            ?: return false
+
+        return toList.contains(PortSpec(toName, toPortName))
+    }
+
+    fun connectionExists(immediate: String, toName: String, toPortName: String): Boolean {
+        val toList = connections[ImmSpec(immediate)]
+            ?: return false
+        return toList.contains(PortSpec(toName, toPortName))
+    }
+
     fun evaluate() {
         evaluate(evalQueue)
     }
 
     fun evaluate(evalQueue: List<String>) {
-        for (leafName in evalQueue) {
-            val leaf = getLeaf(leafName)
+        for ((leafName, leaf) in leaves) {
             if (leaf is Fifo) {
-                if (leaf.isPortConnected("in")) {
-                    leaf.pullFromInput()
-                }
                 leaf.pushToOutputs()
             }
+        }
 
+        for (leafName in evalQueue) {
             getLeaf(leafName).evaluate()
         }
+
+        for ((leafName, leaf) in leaves) {
+            if (leaf is Fifo) {
+                leaf.pullFromInputs()
+            }
+        }
     }
+
+    fun toDOTNetwork(): DOTNetwork =
+        DOTNetwork(
+            connections.toList().map { (key, value) ->
+                val source: DNP = when (key) {
+                    is ImmSpec -> DNP(key.imm, "")
+                    is PortSpec -> DNP(key.leafName, key.leafPortName)
+                    else -> DNP("ERROR: invalid node type!", "")
+                }
+
+                value
+                    .map { DNP(it.leafName, it.leafPortName) }
+                    .map { DOTConnection(source, it) }
+            }.reduce { acc, sublist -> acc + sublist }
+        )
 }
