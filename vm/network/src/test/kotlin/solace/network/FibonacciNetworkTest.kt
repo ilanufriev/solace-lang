@@ -82,7 +82,7 @@ class FibonacciNetworkTest {
         val sink = LoadedNode(
             name = "FibSink",
             type = NodeType.HARDWARE,
-            ports = PortSignature(inputs = listOf("inFib"), outputs = emptyList(), self = listOf("last")),
+            ports = PortSignature(inputs = listOf("inFib"), outputs = listOf("last"), self = emptyList()),
             bytecode = solbc(
                 NodeType.HARDWARE,
                 initCode = encodeAsm(
@@ -128,7 +128,7 @@ class FibonacciNetworkTest {
         val lastChannel = network.nodes
             .single { it.descriptor.name == "FibSink" }
             .ports
-            .self
+            .outputs
             .getValue("last") as Channel<Any?>
 
         val observed = mutableListOf<Int>()

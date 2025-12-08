@@ -56,7 +56,6 @@ private fun parseTopology(path: Path): Pair<SolaceParser, SolaceParser.ProgramCo
 }
 
 private fun compileFile(rawInput: Path, outputDir: Path, printAst: Boolean) {
-private fun compileFile(rawInput: Path, outputDir: Path, printAst: Boolean) {
     val input = resolveInputPath(rawInput)
     val (parser, tree) = parseTopology(input)
     if (printAst) {
@@ -68,9 +67,6 @@ private fun compileFile(rawInput: Path, outputDir: Path, printAst: Boolean) {
     }
 
     try {
-        if (printAst) {
-            println(prettyTree(tree, parser))
-        }
         val bytecodeByNode = buildHardwareBytecode(tree)
         val topology = analyzeProgram(tree)
         val outputName = packageNameFor(input)
