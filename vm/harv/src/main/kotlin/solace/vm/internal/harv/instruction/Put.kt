@@ -17,4 +17,12 @@ class Put : Instruction {
         valueName = m[1] ?: throw NoIdentifierPatternFound(s)
         isInit = m[2] != null
     }
+
+    override fun toString(): String {
+        return AsmParser.instructionPrefix +
+                "${this::class.simpleName!!.lowercase()} " +
+                "${AsmParser.valueNamePrefix}$valueName" +
+                if (isInit) " ?" else ""
+    }
+
 }

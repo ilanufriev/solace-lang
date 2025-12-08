@@ -13,6 +13,10 @@ class Push : Instruction {
     override var isInit: Boolean = false
 
     override fun parse(s: String) {
+        string = null
+        int = null
+        identifier = null
+
         val patternVariants = mapOf(
             HarvInt::class.simpleName!! to arrayOf(
                 AsmParser.instructionPattern,
@@ -63,7 +67,7 @@ class Push : Instruction {
             else -> ""
         }
 
-        return "${AsmParser.instructionPrefix}" +
+        return AsmParser.instructionPrefix +
                 "${this::class.simpleName!!.lowercase()} " +
                 operand +
                 if (isInit) " ?" else ""

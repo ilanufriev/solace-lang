@@ -12,6 +12,10 @@ class Label : Instruction {
             AsmParser.valueNamePattern,
             AsmParser.isInitPattern
         ))
+
+        m[0] ?: NoInstructionPatternFound(s)
+        labelName = m[1] ?: throw NoIdentifierPatternFound(s)
+        isInit = m[2] != null
     }
 
     override fun toString(): String {

@@ -13,6 +13,11 @@ open class SimpleInstruction : Instruction {
         m[0] ?: throw NoInstructionPatternFound(s)
         isInit = m[1] != null
     }
+
+    override fun toString(): String {
+        return AsmParser.instructionPrefix +
+                this::class.simpleName!!.lowercase()
+    }
 }
 
 class Add   : SimpleInstruction()

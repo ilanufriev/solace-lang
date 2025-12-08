@@ -1,10 +1,13 @@
 package solace.vm.internal.harv
 
+import solace.vm.internal.harv.instruction.*
 import solace.vm.internal.harv.instruction.IllegalInstruction
 import solace.vm.internal.harv.instruction.Instruction
+import solace.vm.internal.harv.instruction.SimpleInstruction
 import kotlin.math.min
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.reflect.KClass
 
 data class InstructionType(val strCode: String, val opCode: Byte)
 
@@ -25,24 +28,49 @@ data class EncodedInstruction(var opCode: Byte, var length: Short, var params: S
     }
 }
 
+fun classToInstructionName(instr: Instruction): String {
+    return AsmParser.instructionPrefix + instr::class.simpleName!!.lowercase()
+}
+
 object AsmParser {
     const val instructionPrefix = "."
     const val initPrefix = "\\?"
     const val valueTypePrefix = "%"
-    const val valueNamePrefix = "\\\$"
+    const val valueNamePrefix = "$"
     const val immediateValuePrefix = "#"
-    const val stringPrefix = "[+]"
+    const val stringPrefix = "+"
 
     const val identifierPattern = "[a-zA-Z_][a-zA-Z_0-9]*"
     const val numberPattern = "[-]?[0-9]+"
     const val isInitPattern = initPrefix
     const val instructionPattern = instructionPrefix + identifierPattern
     const val valueTypePattern = valueTypePrefix + identifierPattern
-    const val valueNamePattern = valueNamePrefix + identifierPattern
+    const val valueNamePattern = "\\" + valueNamePrefix + identifierPattern
     const val immediateValuePattern = immediateValuePrefix + numberPattern
-    const val stringPattern = stringPrefix + "\\\".*\\\""
+    const val stringPattern = "[$stringPrefix]" + "\\\".*\\\""
 
     val instructionTypes = mapOf<InstructionType, (() -> Instruction)?>(
+        InstructionType(instructionPrefix + Branch::class.simpleName!!.lowercase(), 0x01) to ::Branch,
+        InstructionType(instructionPrefix + Define::class.simpleName!!.lowercase(), 0x02) to ::Define,
+        InstructionType(instructionPrefix + Goto::class.simpleName!!.lowercase(), 0x03) to ::Goto,
+        InstructionType(instructionPrefix + Label::class.simpleName!!.lowercase(), 0x04) to ::Label,
+        InstructionType(instructionPrefix + Push::class.simpleName!!.lowercase(), 0x05) to ::Push,
+        InstructionType(instructionPrefix + Put::class.simpleName!!.lowercase(), 0x06) to ::Put,
+        InstructionType(instructionPrefix + Add::class.simpleName!!.lowercase(), 0x07) to ::Add,
+        InstructionType(instructionPrefix + Sub::class.simpleName!!.lowercase(), 0x08) to ::Sub,
+        InstructionType(instructionPrefix + Mul::class.simpleName!!.lowercase(), 0x09) to ::Mul,
+        InstructionType(instructionPrefix + Div::class.simpleName!!.lowercase(), 0x0A) to ::Div,
+        InstructionType(instructionPrefix + Mod::class.simpleName!!.lowercase(), 0x0B) to ::Mod,
+        InstructionType(instructionPrefix + Lt::class.simpleName!!.lowercase(), 0x0C) to ::Lt,
+        InstructionType(instructionPrefix + Gt::class.simpleName!!.lowercase(), 0x0D) to ::Gt,
+        InstructionType(instructionPrefix + Le::class.simpleName!!.lowercase(), 0x0E) to ::Le,
+        InstructionType(instructionPrefix + Ge::class.simpleName!!.lowercase(), 0x0F) to ::Ge,
+        InstructionType(instructionPrefix + Eq::class.simpleName!!.lowercase(), 0x10) to ::Eq,
+        InstructionType(instructionPrefix + Neq::class.simpleName!!.lowercase(), 0x11) to ::Neq,
+        InstructionType(instructionPrefix + And::class.simpleName!!.lowercase(), 0x12) to ::And,
+        InstructionType(instructionPrefix + Or::class.simpleName!!.lowercase(), 0x13) to ::Or,
+        InstructionType(instructionPrefix + Not::class.simpleName!!.lowercase(), 0x14) to ::Not,
+        InstructionType(instructionPrefix + Print::class.simpleName!!.lowercase(), 0x15) to ::Print,
     )
 
     fun matchPatterns(s: String, matchPatterns: Array<String>): ArrayList<String?> {

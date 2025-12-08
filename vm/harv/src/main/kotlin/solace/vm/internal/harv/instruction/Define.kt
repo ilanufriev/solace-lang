@@ -22,6 +22,10 @@ class Define : Instruction {
     }
 
     override fun toString(): String {
-        return "${AsmParser.instructionPrefix}${this::class.simpleName!!.lowercase()} ${AsmParser.valueTypePrefix}${type} ${AsmParser.valueNamePrefix}${name} ${if(isInit) "?" else ""}"
+        return AsmParser.instructionPrefix +
+                "${this::class.simpleName!!.lowercase()} " +
+                "${AsmParser.valueTypePrefix}${type} " +
+                "${AsmParser.valueNamePrefix}${name}" +
+                if(isInit) " ?" else ""
     }
 }
