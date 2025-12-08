@@ -2,7 +2,6 @@ package solace.compiler.visitors
 
 import solace.compiler.antlr.SolaceBaseVisitor
 import solace.compiler.antlr.SolaceParser
-import solace.vm.internal.sim.asm.EncodedInstruction
 import solace.vm.internal.sim.asm.instructions.Con
 import solace.vm.internal.sim.asm.instructions.ImmCon
 import solace.vm.internal.sim.asm.instructions.Instruction

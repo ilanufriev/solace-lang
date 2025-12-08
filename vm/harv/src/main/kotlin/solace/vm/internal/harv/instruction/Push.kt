@@ -1,0 +1,71 @@
+package solace.vm.internal.harv.instruction
+
+import solace.vm.internal.harv.AsmParser
+import solace.vm.internal.harv.HarvIdentifier
+import solace.vm.internal.harv.HarvInt
+import solace.vm.internal.harv.HarvString
+import solace.vm.internal.harv.HarvVal
+
+class Push : Instruction {
+    var string: String? = null
+    var int: String? = null
+    var identifier: String? = null
+    override var isInit: Boolean = false
+
+    override fun parse(s: String) {
+        val patternVariants = mapOf(
+            HarvInt::class.simpleName!! to arrayOf(
+                AsmParser.instructionPattern,
+                AsmParser.immediateValuePattern,
+                AsmParser.isInitPattern,
+            ),
+            HarvString::class.simpleName!! to arrayOf(
+                AsmParser.instructionPattern,
+                AsmParser.stringPattern,
+                AsmParser.isInitPattern,
+            ),
+            HarvIdentifier::class.simpleName!! to arrayOf(
+                AsmParser.instructionPattern,
+                AsmParser.valueNamePattern,
+                AsmParser.isInitPattern,
+            )
+        )
+
+        for ((type, pattern) in patternVariants) {
+            val m = AsmParser.matchPatterns(s, pattern)
+            m[0] ?: throw NoInstructionPatternFound(s)
+            isInit = m[2] != null
+            when (type) {
+                HarvInt::class.simpleName!! -> {
+                    int = m[1] ?: continue
+                    return
+                }
+                HarvString::class.simpleName!! -> {
+                    string = m[1] ?: continue
+                    return
+                }
+                HarvIdentifier::class.simpleName!! -> {
+                    identifier = m[1] ?: continue
+                    return
+                }
+            }
+        }
+
+        throw InstructionException("Illegal instruction format: $s")
+    }
+
+    override fun toString(): String {
+        // Determine which operand is present and format accordingly
+        val operand = when {
+            int != null -> "${AsmParser.immediateValuePrefix}$int"
+            string != null -> "${AsmParser.stringPrefix}$string"
+            identifier != null -> "${AsmParser.valueNamePrefix}$identifier"
+            else -> ""
+        }
+
+        return "${AsmParser.instructionPrefix}" +
+                "${this::class.simpleName!!.lowercase()} " +
+                operand +
+                if (isInit) " ?" else ""
+    }
+}
