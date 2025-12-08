@@ -17,6 +17,8 @@ dependencies {
 
     // Use the Kotlin Test integration.
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
+    testImplementation project(':vm:network')
+    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1"
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -44,10 +46,19 @@ tasks.named('test') {
 
 tasks.withType(org.gradle.api.plugins.antlr.AntlrTask).configureEach {
     // Generate sources into the desired package instead of the default (no package).
-    arguments += ['-package', 'solace.compiler.antlr', '-visitor']
+    packageName = 'solace.compiler.antlr'
+    arguments += ['-visitor']
 }
 
 tasks.named('compileKotlin') {
     // Ensure ANTLR sources are generated before compiling Kotlin code that depends on them.
     dependsOn(tasks.named('generateGrammarSource'))
+}
+
+tasks.named('compileJava') {
+    // Compile the freshly generated parser/visitor classes in the same invocation to avoid
+    // incremental builds missing new types.
+    dependsOn(tasks.named('generateGrammarSource'))
+    source(tasks.named('generateGrammarSource'))
+    options.incremental = false
 }

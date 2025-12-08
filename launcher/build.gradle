@@ -13,7 +13,7 @@ dependencies {
     // Use the Kotlin Test integration.
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
 
-    implementation project(":vm:sim")
+    implementation project(":vm:network")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -25,7 +25,7 @@ java {
 
 application {
     // Define the main class for the application.
-    mainClass = 'org.example.AppKt'
+    mainClass = 'solace.network.MainKt'
 }
 
 tasks.named('test') {

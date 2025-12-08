@@ -84,7 +84,7 @@ class Simulator {
         } catch (e: Fifo.FifoIsEmptyException) {
             return ExecStatus.BLOCKED
         } catch (e: Exception) {
-            System.err.println(e.message)
+            e.printStackTrace()
             return ExecStatus.ERROR
         }
 

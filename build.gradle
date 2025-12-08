@@ -1,0 +1,26 @@
+plugins {
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':vm:network')
+}
+
+application {
+    // Delegate to the network VM entrypoint so `./gradlew run --args="..."`
+    // works from the repo root.
+    mainClass = 'solace.network.MainKt'
+}
+
+// Avoid invoking subproject "run" tasks when executing the root ":run" without qualification.
+def requestedTasks = gradle.startParameter.taskNames.toSet()
+subprojects {
+    tasks.matching { it.name == "run" }.configureEach {
+        def aliases = [path, path.startsWith(":") ? path.substring(1) : path, "${project.name}:run"] as Set
+        enabled = !requestedTasks.intersect(aliases).isEmpty()
+    }
+}

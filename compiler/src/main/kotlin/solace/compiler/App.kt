@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import solace.compiler.antlr.SolaceLexer
 import solace.compiler.antlr.SolaceParser
+import solace.compiler.visitors.HardwareVisitor.HardwareVisitorException
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -25,7 +26,12 @@ private fun parseArgs(args: Array<String>): CliOptions {
                 if (i >= args.size) error("Missing value for $arg")
                 outputDir = Path.of(args[i])
             }
-            "--print-ast" -> printAst = true
+            "--print-ast" -> {
+                printAst = true
+            }
+            "--help", "-h" -> {
+                throw IllegalStateException("")
+            }
             else -> {
                 if (input != null) error("Unexpected argument: $arg")
                 input = Path.of(arg)
@@ -50,6 +56,7 @@ private fun parseTopology(path: Path): Pair<SolaceParser, SolaceParser.ProgramCo
 }
 
 private fun compileFile(rawInput: Path, outputDir: Path, printAst: Boolean) {
+private fun compileFile(rawInput: Path, outputDir: Path, printAst: Boolean) {
     val input = resolveInputPath(rawInput)
     val (parser, tree) = parseTopology(input)
     if (printAst) {
@@ -61,12 +68,18 @@ private fun compileFile(rawInput: Path, outputDir: Path, printAst: Boolean) {
     }
 
     try {
+        if (printAst) {
+            println(prettyTree(tree, parser))
+        }
+        val bytecodeByNode = buildHardwareBytecode(tree)
         val topology = analyzeProgram(tree)
         val outputName = packageNameFor(input)
-        val outputPath = writeProgramPackage(topology, outputDir, outputName)
+        val outputPath = writeProgramPackage(topology, bytecodeByNode, outputDir, outputName)
         println("Compiled ${topology.nodes.size} node(s) to ${outputPath.toAbsolutePath()}")
     } catch (ex: ValidationException) {
         println("Validation error: ${ex.message}")
+    } catch (ex: HardwareVisitorException) {
+        println("Hardware compilation error: ${ex.message}")
     }
 }
 
@@ -74,8 +87,16 @@ fun main(args: Array<String>) {
     val options = try {
         parseArgs(args)
     } catch (ex: IllegalStateException) {
-        println("Error: ${ex.message}")
-        println("Usage: solace-compiler <input.solace> [--out <outputDir>] [--print-ast]")
+        if (ex.message.isNullOrBlank()) {
+            println("Usage: solace-compiler <input.solace> [--out <outputDir>] [--print-ast] [--help]")
+            println("Options:")
+            println("  --out, -o <dir>     Output directory (default: build/solace)")
+            println("  --print-ast         Print parsed AST before validation/compilation")
+            println("  --help, -h          Show this help")
+        } else {
+            println("Error: ${ex.message}")
+            println("Usage: solace-compiler <input.solace> [--out <outputDir>] [--print-ast] [--help]")
+        }
         return
     }
     compileFile(options.input, options.outputDir, options.printAst)

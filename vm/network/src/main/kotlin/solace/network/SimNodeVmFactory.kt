@@ -3,8 +3,6 @@ package solace.network
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
@@ -52,6 +50,8 @@ private class SimNodeVm(
     private val outputPorts = node.ports.outputs
 
     override fun launch(scope: CoroutineScope): Job = scope.launch(Dispatchers.Default) {
+        // Deliver any data produced during init (e.g., self-loop seeds) before entering run loop.
+        flushOutputs()
         while (isActive) {
             val drained = drainInputs()
             val status = simulator.tryRun()
