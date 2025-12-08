@@ -1,8 +1,9 @@
 package solace.vm.internal.sim.graph
 
-import solace.dotgen.*
+import solace.vm.internal.sim.graph.dotgen.DNP
+import solace.vm.internal.sim.graph.dotgen.DOTConnection
+import solace.vm.internal.sim.graph.dotgen.DOTNetwork
 import solace.vm.internal.sim.netlist.*
-import solace.vm.internal.sim.netlist.util.Port
 import solace.vm.internal.sim.types.*
 
 object NetlistGraphFactory {

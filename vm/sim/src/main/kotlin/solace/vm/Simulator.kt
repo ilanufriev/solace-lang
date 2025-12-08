@@ -90,4 +90,12 @@ class Simulator {
 
         return ExecStatus.SUCCESS
     }
+
+    fun dumpInitGraphToDOT(): String {
+        return initGraph.toDOTNetwork().toString()
+    }
+
+    fun dumpRunGraphToDOT(): String {
+        return runGraph.toDOTNetwork().toString()
+    }
 }

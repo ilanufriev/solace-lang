@@ -65,12 +65,18 @@ class HardwareVisitor : SolaceBaseVisitor<Any>() {
     }
 
     private fun getInstrsFromVisitResult(visitResult: VisitResult): List<Instruction> {
-        if (visitResult is LeafVisitResult) {
-            return visitResult.instrs
-        } else if (visitResult is ImmediateVisitResult) {
-            // nop
-        } else if (visitResult is StmtVisitResult) {
-            return visitResult.instrs
+        when (visitResult) {
+            is LeafVisitResult -> {
+                return visitResult.instrs
+            }
+
+            is ImmediateVisitResult -> {
+                // nop
+            }
+
+            is StmtVisitResult -> {
+                return visitResult.instrs
+            }
         }
 
         return listOf()
@@ -81,8 +87,8 @@ class HardwareVisitor : SolaceBaseVisitor<Any>() {
                                         visitResult: VisitResult): List<Instruction> {
         val instrs = mutableListOf<Instruction>()
 
-        if (visitResult is LeafVisitResult) {
-            instrs.addLast(
+        when (visitResult) {
+            is LeafVisitResult -> instrs.addLast(
                 Con(
                     visitResult.conLeafName,
                     visitResult.conLeafPortName,
@@ -91,8 +97,7 @@ class HardwareVisitor : SolaceBaseVisitor<Any>() {
                     false
                 )
             )
-        } else if (visitResult is ImmediateVisitResult) {
-            instrs.addLast(
+            is ImmediateVisitResult -> instrs.addLast(
                 ImmCon(
                     leafName,
                     leafPortName,
