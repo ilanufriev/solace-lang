@@ -25,7 +25,7 @@ class Simulator {
                     targetGraph.addLeaf(i.leafName!!, i.leafType!!)
                 }
                 is Con -> {
-                    targetGraph.conLeaf(i.leafName1!!, i.leafPortName1!!, i.leafName2!!, i.leafPortName2!!)
+                    targetGraph.conLeaf(i.fromLeafName!!, i.fromLeafPortName!!, i.toLeafName!!, i.toLeafPortName!!)
                 }
                 is ImmCon -> {
                     targetGraph.conLeafToImmediate(i.leafName!!, i.leafPortName!!, i.immediate!!.toInt())
@@ -89,5 +89,13 @@ class Simulator {
         }
 
         return ExecStatus.SUCCESS
+    }
+
+    fun dumpInitGraphToDOT(): String {
+        return initGraph.toDOTNetwork().toString()
+    }
+
+    fun dumpRunGraphToDOT(): String {
+        return runGraph.toDOTNetwork().toString()
     }
 }

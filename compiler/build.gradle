@@ -13,6 +13,7 @@ repositories {
 dependencies {
     antlr 'org.antlr:antlr4:4.13.2'
     implementation 'org.antlr:antlr4-runtime:4.13.2'
+    implementation project(':vm:sim')
 
     // Use the Kotlin Test integration.
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
@@ -43,7 +44,7 @@ tasks.named('test') {
 
 tasks.withType(org.gradle.api.plugins.antlr.AntlrTask).configureEach {
     // Generate sources into the desired package instead of the default (no package).
-    arguments += ['-package', 'solace.compiler.antlr']
+    arguments += ['-package', 'solace.compiler.antlr', '-visitor']
 }
 
 tasks.named('compileKotlin') {
