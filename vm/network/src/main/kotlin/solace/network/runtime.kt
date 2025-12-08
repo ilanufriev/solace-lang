@@ -1,5 +1,8 @@
 package solace.network
 
+import solace.utils.dotgen.DNP
+import solace.utils.dotgen.DOTConnection
+import solace.utils.dotgen.DOTNetwork
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -14,6 +17,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.collections.map
 
 data class NodePorts(
     val inputs: Map<String, ReceiveChannel<Any?>>,
@@ -35,6 +39,9 @@ data class BuiltNetwork(
     // Launch VMs for all nodes using the provided factory within the given scope.
     fun launch(scope: CoroutineScope, factory: NodeVmFactory = StubNodeVmFactory()): List<Job> =
         nodes.map { node -> factory.create(node).launch(scope) }
+
+    fun toDOTNetwork(): DOTNetwork =
+        DOTNetwork(connections.map { DOTConnection(DNP(it.from.node, it.from.port), DNP(it.to.node, it.to.port)) })
 }
 
 // Construct channel wiring for the loaded program, validating ports and producing runnable nodes.
