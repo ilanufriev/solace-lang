@@ -22,7 +22,9 @@ class SimulatorTest {
             .con $add@out $x@in
             .con $x@out $numbers@in
             .con $x@out $counter@in
-        """.trimIndent()).joinToString { "" }
+        """.trimIndent()).joinToString("")
+
+        println(byteCode)
 
         var sim = Simulator()
         sim.loadByteCode(byteCode)
@@ -64,7 +66,7 @@ class SimulatorTest {
             .con $in1@out $add@in1
             .con $in2@out $add@in2
             .con $add@out $result@in
-        """.trimIndent()).joinToString { "" }
+        """.trimIndent()).joinToString("")
 
         var sim = Simulator()
         sim.loadByteCode(byteCode)
