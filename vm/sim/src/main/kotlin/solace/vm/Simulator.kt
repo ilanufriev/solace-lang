@@ -34,8 +34,8 @@ class Simulator {
         }
     }
 
-    fun loadByteCode(byteCode: ByteArray) {
-        val encodedInstrs = AsmParser.decodeInstructions(byteCode)
+    fun loadByteCode(byteCode: String) {
+        val encodedInstrs = AsmParser.parseEncodedInstructions(byteCode)
         val instrsStrings = AsmParser.decodeInstructions(encodedInstrs)
         val instrs = AsmParser.parseIntoInstrs(instrsStrings)
         executeAndBuildGraph(instrs)
