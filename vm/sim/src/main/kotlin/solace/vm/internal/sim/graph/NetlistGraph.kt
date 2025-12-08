@@ -1,8 +1,8 @@
 package solace.vm.internal.sim.graph
 
-import solace.vm.internal.sim.graph.dotgen.DNP
-import solace.vm.internal.sim.graph.dotgen.DOTConnection
-import solace.vm.internal.sim.graph.dotgen.DOTNetwork
+import solace.utils.dotgen.DNP
+import solace.utils.dotgen.DOTConnection
+import solace.utils.dotgen.DOTNetwork
 import solace.vm.internal.sim.netlist.*
 import solace.vm.internal.sim.types.*
 

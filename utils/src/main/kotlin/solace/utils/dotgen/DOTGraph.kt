@@ -1,4 +1,4 @@
-package solace.vm.internal.sim.graph.dotgen
+package solace.utils.dotgen
 
 import java.util.*
 
