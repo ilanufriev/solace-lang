@@ -24,6 +24,8 @@ class SimulatorTest {
             .con $x@out $counter@in
         """.trimIndent()).joinToString("")
 
+        println(byteCode)
+
         var sim = Simulator()
         sim.loadByteCode(byteCode)
         var result = sim.tryInit()
