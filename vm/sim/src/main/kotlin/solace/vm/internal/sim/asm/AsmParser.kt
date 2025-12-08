@@ -6,12 +6,25 @@ import solace.vm.internal.sim.asm.instructions.ImmCon
 import solace.vm.internal.sim.asm.instructions.Instruction
 import solace.vm.internal.sim.asm.instructions.New
 import kotlin.math.min
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 data class InstructionType(val strCode: String, val opCode: Byte)
 
 data class EncodedInstruction(var opCode: Byte, var length: Short, var params: String) {
     override fun toString(): String {
         return opCode.toHexString() + length.toHexString() + params
+    }
+
+    fun toByteArray(): ByteArray {
+        val paramBytes = params.toByteArray(Charsets.US_ASCII)
+        val buffer = ByteBuffer.allocate(1 + 2 + paramBytes.size)!!
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+
+        buffer.put(opCode)          // opCode (1 byte)
+        buffer.putShort(length)     // length (2 bytes)
+        buffer.put(paramBytes)      // params (UTF‑8)
+        return buffer.array()
     }
 }
 
@@ -50,9 +63,9 @@ object AsmParser {
         return source.filter { c ->  !c.isWhitespace() }
     }
 
-    fun parseEncodedInstructions(bytecode: String): List<EncodedInstruction> {
+    fun parseEncodedInstructions(byteCode: String): List<EncodedInstruction> {
         val encodedList = mutableListOf<EncodedInstruction>()
-        var buffer = bytecode
+        var buffer = byteCode
         while (!buffer.isEmpty()) {
             val opCode = buffer.substring(0, 2).hexToByte()
             val length = buffer.substring(2, 6).hexToShort()
@@ -64,15 +77,53 @@ object AsmParser {
         return encodedList
     }
 
-    fun decodeInstructions(bytecode: Iterable<EncodedInstruction>): List<String> {
+    fun decodeInstructions(byteCode: ByteArray): List<EncodedInstruction> {
+        val instrs = mutableListOf<EncodedInstruction>()
+        val buffer = ByteBuffer.wrap(byteCode)!!
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+
+        while (buffer.remaining() > 0) {
+            val opCode = buffer.get();
+            val length = buffer.getShort();
+            val paramBytes = ByteArray(length.toInt())
+            buffer.get(paramBytes)
+            instrs.addLast(
+                EncodedInstruction(
+                    opCode,
+                    length,
+                    paramBytes.toString(Charsets.US_ASCII)
+                )
+            )
+        }
+
+        return instrs
+    }
+
+    fun decodeInstructions(byteCode: Iterable<EncodedInstruction>): List<String> {
         val decodedList = mutableListOf<String>()
-        for (einstr in bytecode) {
+        for (einstr in byteCode) {
             val itype = matchOpCode(einstr.opCode)
                 ?: throw IllegalInstruction(einstr.toString())
             decodedList.addLast(buildString { append(itype.strCode + einstr.params) })
         }
 
         return decodedList
+    }
+
+    fun encodeInstructionsToByteCode(instrs: Iterable<EncodedInstruction>): ByteArray {
+        val byteCodes = mutableListOf<ByteArray>()
+        for (instr in instrs) {
+            byteCodes.addLast(instr.toByteArray())
+        }
+
+        val byteBuffer = ByteBuffer.allocate(byteCodes.sumOf { i -> i.size })!!
+        for (byteCode in byteCodes) {
+            for (byte in byteCode) {
+                byteBuffer.put(byte)
+            }
+        }
+
+        return byteBuffer.array()
     }
 
     fun encodeInstructions(instrs: Iterable<Instruction>): List<EncodedInstruction> {
