@@ -9,12 +9,14 @@ import java.nio.file.Path
 
 private data class CliOptions(
     val input: Path,
-    val outputDir: Path
+    val outputDir: Path,
+    val printAst: Boolean
 )
 
 private fun parseArgs(args: Array<String>): CliOptions {
     var input: Path? = null
     var outputDir = Path.of("build/solace")
+    var printAst = false
     var i = 0
     while (i < args.size) {
         when (val arg = args[i]) {
@@ -23,6 +25,7 @@ private fun parseArgs(args: Array<String>): CliOptions {
                 if (i >= args.size) error("Missing value for $arg")
                 outputDir = Path.of(args[i])
             }
+            "--print-ast" -> printAst = true
             else -> {
                 if (input != null) error("Unexpected argument: $arg")
                 input = Path.of(arg)
@@ -34,7 +37,7 @@ private fun parseArgs(args: Array<String>): CliOptions {
         input = Path.of("../pseudocode.solace")
         println("No input provided, defaulting to ${input.toAbsolutePath()}")
     }
-    return CliOptions(input, outputDir)
+    return CliOptions(input, outputDir, printAst)
 }
 
 private fun parseTopology(path: Path): Pair<SolaceParser, SolaceParser.ProgramContext> {
@@ -46,9 +49,12 @@ private fun parseTopology(path: Path): Pair<SolaceParser, SolaceParser.ProgramCo
     return parser to tree
 }
 
-private fun compileFile(rawInput: Path, outputDir: Path) {
+private fun compileFile(rawInput: Path, outputDir: Path, printAst: Boolean) {
     val input = resolveInputPath(rawInput)
     val (parser, tree) = parseTopology(input)
+    if (printAst) {
+        println(prettyTree(tree, parser))
+    }
     if (parser.numberOfSyntaxErrors > 0) {
         println("Parsed '${input.toAbsolutePath()}'. Syntax errors: ${parser.numberOfSyntaxErrors}")
         return
@@ -69,10 +75,10 @@ fun main(args: Array<String>) {
         parseArgs(args)
     } catch (ex: IllegalStateException) {
         println("Error: ${ex.message}")
-        println("Usage: solace-compiler <input.solace> [--out <outputDir>]")
+        println("Usage: solace-compiler <input.solace> [--out <outputDir>] [--print-ast]")
         return
     }
-    compileFile(options.input, options.outputDir)
+    compileFile(options.input, options.outputDir, options.printAst)
 }
 
 private fun packageNameFor(input: Path): String {

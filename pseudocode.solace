@@ -4,7 +4,9 @@ node Counter : hardware (
     self: loop;
 ) {
     init {
-        loop <- 0;
+        x = 5;
+        numbers <- x;
+
     }
 
     run {
