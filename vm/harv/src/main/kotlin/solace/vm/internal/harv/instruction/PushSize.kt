@@ -2,15 +2,15 @@ package solace.vm.internal.harv.instruction
 
 import solace.vm.internal.harv.AsmParser
 
-class Label() : Instruction {
-    var labelName: String? = null
-    override var isInit: Boolean = false
+class PushSize() : Instruction {
+    var fifoName: String? = null
 
-    constructor(labelName: String, isInit: Boolean = false) : this() {
-        this.labelName = labelName
+    constructor(fifoName: String, isInit: Boolean): this() {
+        this.fifoName = fifoName
         this.isInit = isInit
     }
 
+    override var isInit: Boolean = false
     override fun parse(s: String) {
         val m = AsmParser.matchPatterns(s, arrayOf(
             AsmParser.instructionPattern,
@@ -18,15 +18,15 @@ class Label() : Instruction {
             AsmParser.isInitPattern
         ))
 
-        m[0] ?: NoInstructionPatternFound(s)
-        labelName = m[1] ?: throw NoIdentifierPatternFound(s)
+        m[0] ?: throw NoInstructionPatternFound(s)
+        fifoName = m[1] ?: throw NoIdentifierPatternFound(s)
         isInit = m[2] != null
     }
 
     override fun toString(): String {
         return AsmParser.instructionPrefix +
                 "${this::class.simpleName!!.lowercase()} " +
-                "${AsmParser.valueNamePrefix}$labelName" +
+                AsmParser.valueNamePrefix + "$fifoName" +
                 if (isInit) " ?" else ""
     }
 }
