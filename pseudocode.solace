@@ -1,10 +1,12 @@
-/// Аппаратный счётчик: генерирует 0,1,2,3,...
+    /// Аппаратный счётчик: генерирует 0,1,2,3,...
 node Counter : hardware (
     out: numbers;
     self: loop;
 ) {
     init {
-        loop <- 0;
+        x = 5;
+        numbers <- x;
+
     }
 
     run {

@@ -23,7 +23,7 @@ node Pulse : hardware (
 
 node Accumulator : hardware (
     in: inc;
-    out: last, total;
+    //out: last, total;
     self: state;
 ) { 
     init {
@@ -36,9 +36,9 @@ node Accumulator : hardware (
         v = $inc;
         s = $state;
 
-        last <- v;
+        //last <- v;
         sum = s + v;
-        total <- sum;
+        //total <- sum;
         state <- sum;
     }
 }
