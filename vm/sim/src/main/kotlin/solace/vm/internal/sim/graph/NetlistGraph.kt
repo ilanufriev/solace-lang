@@ -1,7 +1,9 @@
 package solace.vm.internal.sim.graph
 
+import solace.vm.internal.sim.graph.dotgen.DNP
+import solace.vm.internal.sim.graph.dotgen.DOTConnection
+import solace.vm.internal.sim.graph.dotgen.DOTNetwork
 import solace.vm.internal.sim.netlist.*
-import solace.vm.internal.sim.netlist.util.Port
 import solace.vm.internal.sim.types.*
 
 object NetlistGraphFactory {
@@ -251,4 +253,19 @@ class NetlistGraph {
             }
         }
     }
+
+    fun toDOTNetwork(): DOTNetwork =
+        DOTNetwork(
+            connections.toList().map { (key, value) ->
+                val source: DNP = when (key) {
+                    is ImmSpec -> DNP(key.imm, "")
+                    is PortSpec -> DNP(key.leafName, key.leafPortName)
+                    else -> DNP("ERROR: invalid node type!", "")
+                }
+
+                value
+                    .map { DNP(it.leafName, it.leafPortName) }
+                    .map { DOTConnection(source, it) }
+            }.reduce { acc, sublist -> acc + sublist }
+        )
 }
