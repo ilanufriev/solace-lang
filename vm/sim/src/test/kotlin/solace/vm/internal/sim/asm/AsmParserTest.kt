@@ -2,11 +2,7 @@ package solace.vm.internal.sim.asm
 
 import solace.vm.internal.sim.asm.instructions.Con
 import solace.vm.internal.sim.asm.instructions.ImmCon
-import solace.vm.internal.sim.asm.instructions.NewInFifo
-import solace.vm.internal.sim.asm.instructions.FifoCon
 import solace.vm.internal.sim.asm.instructions.New
-import solace.vm.internal.sim.asm.instructions.NewLoopFifo
-import solace.vm.internal.sim.asm.instructions.NewOutFifo
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -30,7 +26,7 @@ class AsmParserTest {
     }
 
     @Test fun testEncoding() {
-        val einstrs = AsmParser.encodeInstructions(".new %Mux \$mux00 ? .con \$mux00@in1 \$mux01@in2")
+        val einstrs = AsmParser.encodeInstructionsFromString(".new %Mux \$mux00 ? .con \$mux00@in1 \$mux01@in2")
         assertEquals(einstrs.first().toString(), "01000b%Mux\$mux00?")
 
         val einstrString = einstrs.joinToString(separator = "")
