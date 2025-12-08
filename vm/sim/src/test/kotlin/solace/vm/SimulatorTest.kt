@@ -8,7 +8,7 @@ import kotlin.test.assertFalse
 class SimulatorTest {
     @Test fun testSimulatorCounterProgram() {
         // Counter example, written in assembly
-        val byteCode = AsmParser.encodeInstructionsFromString($$"""
+        val byteCodeInstrs = AsmParser.encodeInstructionsFromString($$"""
             .new %Fifo $counter ?
             .immcon $counter@in #0 ?
 
@@ -22,7 +22,8 @@ class SimulatorTest {
             .con $add@out $x@in
             .con $x@out $numbers@in
             .con $x@out $counter@in
-        """.trimIndent()).joinToString("")
+        """.trimIndent())
+        val byteCode = AsmParser.encodeInstructionsToByteCode(byteCodeInstrs)
 
         var sim = Simulator()
         sim.loadByteCode(byteCode)
@@ -55,7 +56,7 @@ class SimulatorTest {
     }
 
     @Test fun testSimulatorAdderProgram() {
-        val byteCode = AsmParser.encodeInstructionsFromString($$"""
+        val byteCodeInstrs = AsmParser.encodeInstructionsFromString($$"""
             .new %Fifo $in1
             .new %Fifo $in2
             .new %Adder $add
@@ -64,7 +65,8 @@ class SimulatorTest {
             .con $in1@out $add@in1
             .con $in2@out $add@in2
             .con $add@out $result@in
-        """.trimIndent()).joinToString("")
+        """.trimIndent())
+        val byteCode = AsmParser.encodeInstructionsToByteCode(byteCodeInstrs)
 
         var sim = Simulator()
         sim.loadByteCode(byteCode)

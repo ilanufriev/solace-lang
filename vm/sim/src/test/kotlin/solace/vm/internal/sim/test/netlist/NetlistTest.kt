@@ -1,6 +1,7 @@
 package solace.vm.internal.sim.test.netlist
 
 import solace.vm.internal.sim.graph.NetlistGraph
+import solace.utils.dotgen.*
 import solace.vm.internal.sim.graph.NetlistGraphFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
