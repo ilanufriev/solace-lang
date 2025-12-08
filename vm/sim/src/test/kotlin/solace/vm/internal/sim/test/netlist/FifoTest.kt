@@ -36,7 +36,7 @@ class FifoTest {
 
         w1.send(4)
 
-        fifo.pullFromInput()
+        fifo.pullFromInputs()
 
         assertEquals(1, fifo.queue.size)
 

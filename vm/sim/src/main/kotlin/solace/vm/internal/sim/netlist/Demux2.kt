@@ -12,8 +12,8 @@ class Demux2 : LeafType() {
     )
 
     override fun evaluate() {
-        val i = getPort("in").receive() ?: 0
-        val s = getPort("sel").receive() ?: 0
+        val i = getPort("in").receive() ?: return
+        val s = getPort("sel").receive() ?: return
 
         if (s == 0) getPort("out0").send(i)
         else if (s == 1) getPort("out1").send(i)
