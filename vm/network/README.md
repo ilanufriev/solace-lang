@@ -15,6 +15,8 @@
   `./gradlew :vm:network:run --args "build/solace/program.solpkg"`
 - Если запускаете из подкаталога (`vm/network`), можно передать путь относительно корня (по умолчанию ищется также в родительских каталогах):  
   `./gradlew run --args "../build/solace/program.solpkg"`
+- Чтобы получить Graphviz-граф сети и завершить работу без запуска ВМ:  
+  `./gradlew :vm:network:run --args "build/solace/program.solpkg --dot-out build/network.dot"`
 
 ## Архитектура кода
 
