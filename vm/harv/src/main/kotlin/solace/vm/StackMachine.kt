@@ -109,7 +109,7 @@ class StackMachine() {
         } catch (e: HarvFifo.HarvFifoIsEmpty) {
             return ExecStatus.BLOCKED
         } catch (e: Exception) {
-            System.err.println(e.message)
+            e.printStackTrace()
 
             programCounter = 0
             return ExecStatus.ERROR
@@ -132,7 +132,7 @@ class StackMachine() {
         } catch (e: HarvFifo.HarvFifoIsEmpty) {
             return ExecStatus.BLOCKED
         } catch (e: Exception) {
-            System.err.println(e.message)
+            e.printStackTrace()
 
             programCounter = 0
             return ExecStatus.ERROR

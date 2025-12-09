@@ -7,6 +7,8 @@ private data class CliOptions(
     val packagePath: Path,
     val sniff: Boolean,
     val useSimVm: Boolean,
+    val useHarvVm: Boolean,
+    val useMixedVm: Boolean,
     val durationMs: Long?,
     val sniffLimit: Int?,
     val sniffCsv: Boolean,
@@ -18,6 +20,8 @@ private fun parseArgs(args: Array<String>): CliOptions {
     var path: Path? = null
     var sniff = false
     var useSimVm = false
+    var useHarvVm = false
+    var useMixedVm = false
     var durationMs: Long? = null
     var sniffLimit: Int? = null
     var sniffCsv = false
@@ -28,6 +32,8 @@ private fun parseArgs(args: Array<String>): CliOptions {
         when (val arg = args[i]) {
             "--sniff" -> sniff = true
             "--sim" -> useSimVm = true
+            "--harv" -> useHarvVm = true
+            "--mixed" -> useMixedVm = true
             "--sniff-csv" -> {
                 sniffCsv = true
                 sniff = true // CSV mode implies sniffing
@@ -62,8 +68,10 @@ private fun parseArgs(args: Array<String>): CliOptions {
         }
         i++
     }
+    val modeCount = listOf(useSimVm, useHarvVm, useMixedVm).count { it }
+    require(modeCount <= 1) { "Flags --sim, --harv, and --mixed are mutually exclusive" }
     val packagePath = path ?: Path.of("compiler/build/solace/pseudocode.solpkg")
-    return CliOptions(packagePath, sniff, useSimVm, durationMs, sniffLimit, sniffCsv, sniffCsvFile, dotFile)
+    return CliOptions(packagePath, sniff, useSimVm, useHarvVm, useMixedVm, durationMs, sniffLimit, sniffCsv, sniffCsvFile, dotFile)
 }
 
 fun main(args: Array<String>) {
@@ -77,13 +85,21 @@ fun main(args: Array<String>) {
         println("  --sniff-csv            Log traffic as CSV: from_node,from_port,to_node,to_port,value (implies --sniff)")
         println("  --sniff-csv-file <p>   Write sniffed CSV records into file <p> (implies --sniff-csv)")
         println("  --sniff-limit <n>      Max messages to log per connection when sniffing (mute after n)")
-        println("  --sim                  Run nodes with the simulator VM instead of stub VM")
+        println("  --sim                  Run all nodes with the simulator VM instead of stub VM")
+        println("  --harv                 Run software nodes with the Harv VM instead of stub VM (software-only packages)")
+        println("  --mixed                Run hardware nodes with simulator VM and software nodes with Harv VM (default)")
         println("  --duration-ms <n>      Stop the network after n milliseconds (default when sniffing: 5000)")
         println("  --help,-h              Show this help")
         return
     }
 
     val program = loadProgramPackage(options.packagePath)
+    if (options.useHarvVm) {
+        val hardwareNodes = program.nodes.filter { it.type == NodeType.HARDWARE }
+        require(hardwareNodes.isEmpty()) {
+            "--harv can only run software-only packages; hardware nodes found: ${hardwareNodes.joinToString { it.name }}"
+        }
+    }
     if (options.dotFile != null) {
         val dotNetwork = buildNetwork(program).toDOTNetwork().toString()
         options.dotFile.parent?.let { Files.createDirectories(it) }
@@ -92,9 +108,12 @@ fun main(args: Array<String>) {
         return
     }
 
-    val factory = if (options.useSimVm) {
-        SimNodeVmFactory()
-    } else null
+    val factory = when {
+        options.useMixedVm -> MixedNodeVmFactory()
+        options.useHarvVm -> HarvNodeVmFactory()
+        options.useSimVm -> SimNodeVmFactory()
+        else -> MixedNodeVmFactory() // default mixed: simulator for hardware, Harv for software
+    }
     val duration = options.durationMs ?: if (options.sniff) 5_000L else null
     runNetwork(
         program,

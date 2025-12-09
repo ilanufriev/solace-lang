@@ -71,23 +71,22 @@ class SoftwareVisitor : SolaceBaseVisitor<Any>() {
         node.outs = channelSignatureResult.first["out"]!!
         node.selves = channelSignatureResult.first["self"]!!
 
-        // fifo declarations
-        node.initCode.addAll(channelSignatureResult.second.filter { i -> i.isInit })
-        node.runCode.addAll(channelSignatureResult.second.filter { i -> !i.isInit })
+        // fifo declarations go into init to set up FIFOs once
+        node.initCode.addAll(channelSignatureResult.second)
 
-        // init code
+        // init and run blocks
         val initBlock = visitInitBlock(ctx.initBlock())
         val runBlock = visitRunBlock(ctx.runBlock())
 
+        val (runDefines, runRest) = runBlock.partition { it is Define }
+
         node.initCode.addAll(initBlock)
-        node.initCode.addAll(runBlock.filter { i -> i.isInit })
+        node.initCode.addAll(runDefines)
+        node.runCode.addAll(runRest)
 
-        // all generated instructions are generated as non-init by default, so they need to marked in order
-        // to work properly
-        node.initCode.map { i -> i.isInit = true }
-
-        // run code
-        node.runCode.addAll(runBlock.filter { i -> !i.isInit })
+        // mark sections explicitly
+        node.initCode.forEach { it.isInit = true }
+        node.runCode.forEach { it.isInit = false }
     }
 
     override fun visitChannelSignature(ctx: SolaceParser.ChannelSignatureContext?): Pair<Map<String, List<String>>, List<Instruction>> {

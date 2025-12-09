@@ -7,50 +7,48 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.yield
-import solace.vm.Simulator
+import solace.vm.StackMachine
 import java.nio.charset.StandardCharsets
 
-// NodeVmFactory that boots the simulator per node and bridges network channels to simulator FIFOs.
-class SimNodeVmFactory : NodeVmFactory {
+// NodeVmFactory that boots the Harv stack machine for software nodes.
+class HarvNodeVmFactory : NodeVmFactory {
     override fun create(node: NetworkNode): NodeVm {
         val program = parseSolbc(node.descriptor.bytecode)
         require(program.nodeType == node.descriptor.type) {
             "Node '${node.descriptor.name}' solbc type ${program.nodeType} does not match descriptor ${node.descriptor.type}"
         }
-
-        val simulator = Simulator()
-        val initCode = program.initSection.toString(StandardCharsets.UTF_8)
-        val runCode = program.runSection.toString(StandardCharsets.UTF_8)
-        val combinedBytecode = initCode + runCode
-        simulator.loadByteCode(combinedBytecode)
-        val initStatus = simulator.tryInit()
-        check(initStatus == Simulator.ExecStatus.SUCCESS) {
-            "Simulator init failed for node '${node.descriptor.name}' with status $initStatus"
+        require(node.descriptor.type == NodeType.SOFTWARE) {
+            "Harv VM supports only software nodes, got ${node.descriptor.type} for '${node.descriptor.name}'"
         }
 
-        return SimNodeVm(node, simulator)
+        val machine = StackMachine()
+        val initCode = program.initSection.toString(StandardCharsets.UTF_8)
+        val runCode = program.runSection.toString(StandardCharsets.UTF_8)
+        machine.loadByteCode(initCode + runCode)
+        val initStatus = machine.tryInit()
+        check(initStatus == StackMachine.ExecStatus.SUCCESS) {
+            "Harv VM init failed for node '${node.descriptor.name}' with status $initStatus"
+        }
+
+        return HarvNodeVm(node, machine)
     }
 }
 
-private class SimNodeVm(
+private class HarvNodeVm(
     private val node: NetworkNode,
-    private val simulator: Simulator
+    private val machine: StackMachine
 ) : NodeVm {
     private val inputPorts = node.ports.inputs
     private val outputPorts = node.ports.outputs
 
     override fun launch(scope: CoroutineScope): Job = scope.launch(Dispatchers.Default) {
-        // Deliver any data produced during init (e.g., self-loop seeds) before entering run loop.
         flushOutputs()
         while (isActive) {
             val drained = drainInputs()
-            val status = simulator.tryRun()
-            when (status) {
-                Simulator.ExecStatus.SUCCESS -> flushOutputs()
-                Simulator.ExecStatus.BLOCKED -> {
-                    if (!drained) waitForInput()
-                }
-                Simulator.ExecStatus.ERROR -> error("Simulator error in node '${node.descriptor.name}'")
+            when (machine.tryRun()) {
+                StackMachine.ExecStatus.SUCCESS -> flushOutputs()
+                StackMachine.ExecStatus.BLOCKED -> if (!drained) waitForInput()
+                StackMachine.ExecStatus.ERROR -> error("Harv VM error in node '${node.descriptor.name}'")
             }
             yield()
         }
@@ -59,11 +57,10 @@ private class SimNodeVm(
     private suspend fun drainInputs(): Boolean {
         var drained = false
         inputPorts.forEach { (port, ch) ->
-            while (true) {
-                val result = ch.tryReceive()
-                if (!result.isSuccess) break
-                val value = result.getOrNull()
-                simulator.pushToFifo(port, coerceToInt(port, value))
+            val result = ch.tryReceive()
+            if (result.isSuccess) {
+                val value = result.getOrNull() ?: return@forEach
+                machine.pushToFifo(port, coerceToInt(port, value))
                 drained = true
             }
         }
@@ -73,9 +70,9 @@ private class SimNodeVm(
     private suspend fun flushOutputs() {
         outputPorts.forEach { (port, ch) ->
             while (true) {
-                val size = runCatching { simulator.getFifoSize(port) }.getOrElse { break }
+                val size = runCatching { machine.getFifoSize(port) }.getOrElse { break }
                 if (size == 0) break
-                val value = simulator.pullFromFifo(port)
+                val value = machine.pullFromFifo(port)
                 ch.send(value)
             }
         }
@@ -86,7 +83,7 @@ private class SimNodeVm(
             inputPorts.forEach { (port, ch) ->
                 ch.onReceiveCatching { result ->
                     val value = result.getOrNull() ?: return@onReceiveCatching
-                    simulator.pushToFifo(port, coerceToInt(port, value))
+                    machine.pushToFifo(port, coerceToInt(port, value))
                 }
             }
         }
