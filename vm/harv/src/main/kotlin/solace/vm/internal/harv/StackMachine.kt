@@ -58,8 +58,11 @@ class NewStackMachine() {
 
     private fun step(prg: List<Instruction>) {
         val instruction = prg[programCounter]
-        programCounter++
         executeInstruction(instruction)
+
+        // Должен увеличиваться только в случае успешного выполнения инструкции
+        // (если в fifo недостаточно данных то инструкция не завершится успешно)
+        programCounter++
     }
 
     fun loadByteCode(byteCode: String) {
@@ -82,30 +85,44 @@ class NewStackMachine() {
 
     fun tryInit(): ExecStatus {
         val initProgram = instructions.filter { x -> x.isInit }
-        programCounter = 0
 
         try {
             while (programCounter < initProgram.size) {
                 step(initProgram)
             }
+
+            // См. tryRun()
+            programCounter = 0
             return ExecStatus.SUCCESS
+        } catch (e: HarvFifo.HarvFifoIsEmpty) {
+            return ExecStatus.BLOCKED
         } catch (e: Exception) {
             System.err.println(e.message)
+
+            programCounter = 0
             return ExecStatus.ERROR
         }
     }
 
     fun tryRun(): ExecStatus {
         val runProgram = instructions.filter { x -> !x.isInit }
-        programCounter = 0
 
         try {
             while (programCounter < runProgram.size) {
                 step(runProgram)
             }
+
+            // Сбрасывается только после успешного выполнения или ошибки
+            // в случае блокировки остается на месте пока в fifo не появится
+            // достаточного количества данных
+            programCounter = 0
             return ExecStatus.SUCCESS
+        } catch (e: HarvFifo.HarvFifoIsEmpty) {
+            return ExecStatus.BLOCKED
         } catch (e: Exception) {
             System.err.println(e.message)
+
+            programCounter = 0
             return ExecStatus.ERROR
         }
     }
@@ -226,10 +243,12 @@ class NewStackMachine() {
                     throw Exception("Cannot define variable ${name}. Already exists")
                 }
 
-                if (inst.type == "int") {
+                if (inst.type == HarvInt.typeName) {
                     variables[name] = HarvInt(0)
-                } else if (inst.type == "string") {
+                } else if (inst.type == HarvString.typeName) {
                     variables[name] = HarvString("")
+                } else if (inst.type == HarvFifo.typeName) {
+                    variables[name] = HarvFifo(name)
                 }
 
             }

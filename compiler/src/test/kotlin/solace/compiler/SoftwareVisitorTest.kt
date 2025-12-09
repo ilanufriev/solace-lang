@@ -7,6 +7,7 @@ import solace.compiler.antlr.SolaceParser
 import solace.compiler.visitors.SoftwareVisitor
 import solace.vm.internal.harv.AsmParser
 import solace.vm.internal.harv.EncodedInstruction
+import solace.vm.internal.harv.NewStackMachine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -17,6 +18,35 @@ class SoftwareVisitorTest {
         val tree = parser.program()
         assertEquals(0, parser.numberOfSyntaxErrors, "Parser should not report syntax errors")
         return parser to tree
+    }
+
+    @Test fun testAdderNode() {
+        val visitor = SoftwareVisitor()
+        val (parser, tree) = parse($$"""
+            node Adder : software (
+                in: in1, in2;
+                out: outp;
+            ) {
+                init {
+                }
+            
+                run {
+                    outp <- $in1 + $in2;
+                }
+            }
+        """.trimMargin())
+
+        val nodeList = (visitor.visit(tree) as List<*>).filterIsInstance<SoftwareVisitor.Node>()
+        assertEquals(1, nodeList.size)
+
+        val node = nodeList.first()
+
+        assertEquals("Adder", node.name)
+        assertTrue(node.ins.contains("in1"))
+        assertTrue(node.outs.contains("outp"))
+
+//        println(node.initCode.joinToString("\n"))
+//        println(node.runCode.joinToString("\n"))
     }
 
     @Test fun testBasicNode() {
@@ -51,12 +81,42 @@ class SoftwareVisitorTest {
         assertTrue(node.selves.contains("loop"))
         assertTrue(node.declaredVariables.contains("x"))
 
-        // println(node.initCode.joinToString("\n"))
-        // println(node.runCode.joinToString("\n"))
+        println(node.initCode.joinToString("\n"))
+        println(node.runCode.joinToString("\n"))
 
         val byteCodeInstrs = mutableListOf<EncodedInstruction>()
         byteCodeInstrs.addAll(AsmParser.encodeInstructions(node.initCode))
         byteCodeInstrs.addAll(AsmParser.encodeInstructions(node.runCode))
+        val byteCode = byteCodeInstrs.joinToString("")
+
+        var harv = NewStackMachine()
+        harv.loadByteCode(byteCode)
+        var result = harv.tryInit()
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(1, harv.getFifoSize("loop"))
+        assertEquals(0, harv.pullFromFifo("loop"))
+
+        harv = NewStackMachine()
+        harv.loadByteCode(byteCode)
+        result = harv.tryInit()
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        result = harv.tryRun()
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(1, harv.getFifoSize("numbers"))
+        result = harv.tryRun()
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(2, harv.getFifoSize("numbers"))
+        result = harv.tryRun()
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(3, harv.getFifoSize("numbers"))
+        result = harv.tryRun()
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(4, harv.getFifoSize("numbers"))
+
+        assertEquals(1, harv.pullFromFifo("numbers"))
+        assertEquals(2, harv.pullFromFifo("numbers"))
+        assertEquals(3, harv.pullFromFifo("numbers"))
+        assertEquals(4, harv.pullFromFifo("numbers"))
     }
 
     @Test fun testIfElse() {
@@ -104,8 +164,8 @@ class SoftwareVisitorTest {
         assertTrue(node.selves.contains("loop"))
         assertTrue(node.declaredVariables.contains("x"))
 
-        println(node.initCode.joinToString("\n"))
-        println(node.runCode.joinToString("\n"))
+//        println(node.initCode.joinToString("\n"))
+//        println(node.runCode.joinToString("\n"))
 
         val byteCodeInstrs = mutableListOf<EncodedInstruction>()
         byteCodeInstrs.addAll(AsmParser.encodeInstructions(node.initCode))
