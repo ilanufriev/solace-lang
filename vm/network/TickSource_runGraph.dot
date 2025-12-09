@@ -1,0 +1,17 @@
+digraph Network {
+	node [shape=rect,color=gray];
+	edge [color=gray];
+
+	loop -> Adder0 [taillabel="out_loop0",headlabel="in1"];
+	1 -> Adder0 [taillabel="",headlabel="in2"];
+	Adder0 -> n [taillabel="out",headlabel="in"];
+
+	subgraph helper_n_out {
+		node [shape=circle,width=0,label="",color=gray];
+		helper_n_out;
+	}
+
+	n -> helper_n_out [arrowhead=none,taillabel="out"];
+	helper_n_out -> tick [headlabel=in_tick0];
+	helper_n_out -> loop [headlabel=in_loop1];
+}

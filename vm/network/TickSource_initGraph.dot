@@ -1,0 +1,6 @@
+digraph Network {
+	node [shape=rect,color=gray];
+	edge [color=gray];
+
+	0 -> loop [taillabel="",headlabel="in_loop0"];
+}
