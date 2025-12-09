@@ -2,10 +2,16 @@ package solace.vm.internal.harv.instruction
 
 import solace.vm.internal.harv.AsmParser
 
-class Define : Instruction {
+class Define() : Instruction {
     var type: String? = null
     var name: String? = null
     override var isInit: Boolean = false
+
+    constructor(type: String, name: String, isInit: Boolean = false) : this() {
+        this.type = type
+        this.name = name
+        this.isInit = isInit
+    }
 
     override fun parse(s: String) {
         val m = AsmParser.matchPatterns(s, arrayOf(

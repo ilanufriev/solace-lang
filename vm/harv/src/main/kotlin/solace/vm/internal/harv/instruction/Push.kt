@@ -6,11 +6,23 @@ import solace.vm.internal.harv.HarvInt
 import solace.vm.internal.harv.HarvString
 import solace.vm.internal.harv.HarvVal
 
-class Push : Instruction {
+class Push() : Instruction {
     var string: String? = null
     var int: String? = null
     var identifier: String? = null
     override var isInit: Boolean = false
+
+    constructor(
+        int: String? = null,
+        string: String? = null,
+        identifier: String? = null,
+        isInit: Boolean = false
+    ) : this() {
+        this.int = int
+        this.string = string
+        this.identifier = identifier
+        this.isInit = isInit
+    }
 
     override fun parse(s: String) {
         string = null
@@ -45,7 +57,8 @@ class Push : Instruction {
                     return
                 }
                 HarvString::class.simpleName!! -> {
-                    string = m[1] ?: continue
+                    m[1] ?: continue
+                    string = m[1]!!.substring(1, m[1]!!.length - 1)
                     return
                 }
                 HarvIdentifier::class.simpleName!! -> {
@@ -62,7 +75,7 @@ class Push : Instruction {
         // Determine which operand is present and format accordingly
         val operand = when {
             int != null -> "${AsmParser.immediateValuePrefix}$int"
-            string != null -> "${AsmParser.stringPrefix}$string"
+            string != null -> "${AsmParser.stringPrefix}\"$string\""
             identifier != null -> "${AsmParser.valueNamePrefix}$identifier"
             else -> ""
         }

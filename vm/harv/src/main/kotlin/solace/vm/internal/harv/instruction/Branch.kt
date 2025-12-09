@@ -2,10 +2,17 @@ package solace.vm.internal.harv.instruction
 
 import solace.vm.internal.harv.AsmParser
 
-class Branch : Instruction {
+class Branch() : Instruction {
     var labelIfTrue: String? = null
     var labelIfFalse: String? = null
     var labelEnd: String? = null
+
+    constructor(labelIfTrue: String, labelIfFalse: String, labelEnd: String, isInit: Boolean) : this() {
+        this.labelIfTrue = labelIfTrue
+        this.labelIfFalse = labelIfFalse
+        this.labelEnd = labelEnd
+        this.isInit = isInit
+    }
 
     override var isInit: Boolean = false
     override fun parse(s: String) {

@@ -14,6 +14,8 @@ dependencies {
     antlr 'org.antlr:antlr4:4.13.2'
     implementation 'org.antlr:antlr4-runtime:4.13.2'
     implementation project(':vm:sim')
+    implementation project(':vm:harv')
+    implementation project(':vm:network')
 
     // Use the Kotlin Test integration.
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
