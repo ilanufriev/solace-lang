@@ -24,7 +24,15 @@ import solace.vm.internal.harv.instruction.PushSize
 import solace.vm.internal.harv.instruction.Put
 import solace.vm.internal.harv.instruction.Sub
 
-class NewStackMachine(private val instructions: List<Instruction>) {
+class NewStackMachine() {
+    enum class ExecStatus {
+        BLOCKED,
+        SUCCESS,
+        ERROR,
+    }
+
+    private var instructions = listOf<Instruction>()
+
     private val labels = mutableMapOf<String, Int>()
     private val variables = mutableMapOf<String, HarvVal>()
 
@@ -48,12 +56,62 @@ class NewStackMachine(private val instructions: List<Instruction>) {
         }
     }
 
-    private fun step() {
-        val instruction = instructions[programCounter]
+    private fun step(prg: List<Instruction>) {
+        val instruction = prg[programCounter]
         programCounter++
         executeInstruction(instruction)
     }
 
+    fun loadByteCode(byteCode: String) {
+        val einstrs = AsmParser.parseEncodedInstructions(byteCode)
+        val isntrsStrings = AsmParser.decodeInstructions(einstrs)
+        instructions = AsmParser.parseIntoInstrs(isntrsStrings)
+
+        findLabels()
+    }
+
+    fun findLabels() {
+        for (i in instructions) {
+            if (i is Label) {
+                executeInstruction(i)
+            }
+            programCounter++
+        }
+        programCounter = 0
+    }
+
+    fun tryInit(): ExecStatus {
+        val initProgram = instructions.filter { x -> x.isInit }
+        programCounter = 0
+
+        try {
+            while (programCounter < initProgram.size) {
+                step(initProgram)
+            }
+            return ExecStatus.SUCCESS
+        } catch (e: Exception) {
+            System.err.println(e.message)
+            return ExecStatus.ERROR
+        }
+    }
+
+    fun tryRun(): ExecStatus {
+        val runProgram = instructions.filter { x -> !x.isInit }
+        programCounter = 0
+
+        try {
+            while (programCounter < runProgram.size) {
+                step(runProgram)
+            }
+            return ExecStatus.SUCCESS
+        } catch (e: Exception) {
+            System.err.println(e.message)
+            return ExecStatus.ERROR
+        }
+    }
+
+    fun getStack(): List<HarvVal> = stack
+    
     private fun getFifo(fifoName: String): HarvFifo {
         val fifo = variables[fifoName]
             ?: throw Exception("No fifo $fifoName found")

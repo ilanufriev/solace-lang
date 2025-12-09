@@ -85,3 +85,19 @@ class InstructionTest {
         assertTrue(instrs[5] is Branch)
     }
 }
+
+class NewStackMachineTest {
+    @Test fun basicArithmetic() {
+        val byteCode = AsmParser.encodeInstructionsFromString($$$"""
+            .push #5
+            .push #8
+            .add
+            .sub #2
+        """.trimMargin()).joinToString("")
+
+        val vm = NewStackMachine()
+        vm.loadByteCode(byteCode)
+
+
+    }
+}
