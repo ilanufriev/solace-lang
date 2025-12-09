@@ -1,0 +1,30 @@
+package solace.vm.internal.harv.asm
+
+class Label() : Instruction {
+    var labelName: String? = null
+    override var isInit: Boolean = false
+
+    constructor(labelName: String, isInit: Boolean = false) : this() {
+        this.labelName = labelName
+        this.isInit = isInit
+    }
+
+    override fun parse(s: String) {
+        val m = AsmParser.matchPatterns(s, arrayOf(
+            AsmParser.instructionPattern,
+            AsmParser.valueNamePattern,
+            AsmParser.isInitPattern
+        ))
+
+        m[0] ?: NoInstructionPatternFound(s)
+        labelName = m[1] ?: throw NoIdentifierPatternFound(s)
+        isInit = m[2] != null
+    }
+
+    override fun toString(): String {
+        return AsmParser.instructionPrefix +
+                "${this::class.simpleName!!.lowercase()} " +
+                "${AsmParser.valueNamePrefix}$labelName" +
+                if (isInit) " ?" else ""
+    }
+}
