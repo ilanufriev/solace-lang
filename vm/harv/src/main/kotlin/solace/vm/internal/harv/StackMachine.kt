@@ -76,7 +76,13 @@ class NewStackMachine() {
     fun findLabels() {
         for (i in instructions) {
             if (i is Label) {
-                executeInstruction(i)
+                if (labels.contains(i.labelName))
+                    throw Exception("Label ${i.labelName} already exists");
+
+                if (i.labelName == null)
+                    throw IllegalArgumentException("Label name cannot be null")
+
+                labels[i.labelName!!] = programCounter
             }
             programCounter++
         }
@@ -347,13 +353,7 @@ class NewStackMachine() {
             }
 
             is Label -> {
-                if (labels.contains(inst.labelName))
-                    throw Exception("Label ${inst.labelName} already exists");
-
-                if (inst.labelName == null)
-                    throw IllegalArgumentException("Label name cannot be null")
-
-                labels[inst.labelName!!] = programCounter
+                // do nothing
             }
 
             is Goto -> {
