@@ -1,0 +1,65 @@
+/// Hardware-only Fibonacci pipeline with three nodes:
+/// 1) TickSource: emits a pulse each cycle to drive the computation.
+/// 2) FibStepper: maintains Fibonacci state (prev, curr) and outputs the next value on each tick.
+/// 3) FibSink: receives the Fibonacci stream; keeps the last value in a self FIFO (acts as a collector).
+
+node TickSource : hardware (
+    out: tick;
+    self: loop;
+) {
+    init {
+        // seed the loop so the first run has something to read
+        loop <- 0;
+    }
+
+    run {
+        // keep a simple counter for demonstration (not used by other nodes)
+        n = $loop + 1;
+        tick <- n;
+        loop <- n;
+    }
+}
+
+node FibStepper : hardware (
+    in: step;
+    out: fib;
+    self: prev, curr;
+) {
+    init {
+        // Fibonacci seeds F0=0, F1=1
+        prev <- 0;
+        curr <- 1;
+    }
+
+    run {
+        // consume tick (blocks until available), but keep math unchanged via *0
+        t = $step;
+        a = $prev;
+        b = $curr;
+        next = a + b + t * 0;
+        fib <- next;
+
+        // advance state
+        prev <- b;
+        curr <- next;
+    }
+}
+
+node FibSink : hardware (
+    in: inFib;
+    self: last;
+) {
+    init {
+        last <- 0;
+    }
+
+    run {
+        v = $inFib;
+        last <- v; // keep the last received Fibonacci number
+    }
+}
+
+network {
+    TickSource.tick -> FibStepper.step;
+    FibStepper.fib  -> FibSink.inFib;
+}

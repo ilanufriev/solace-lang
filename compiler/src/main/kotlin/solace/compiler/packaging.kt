@@ -22,9 +22,14 @@ private data class BytecodeBlock(
 }
 
 /**
- * Writes a single program package (*.solpkg) with placeholder bytecode blocks for every node.
+ * Writes a single program package (*.solpkg) combining topology metadata and node bytecode.
  */
-fun writeProgramPackage(topology: NetworkTopology, outputDir: Path, packageName: String = "program.solpkg"): Path {
+fun writeProgramPackage(
+    topology: NetworkTopology,
+    bytecodeByNode: Map<String, ByteArray>,
+    outputDir: Path,
+    packageName: String = "program.solpkg"
+): Path {
     val strings = buildStringTable(topology)
     validateStringTable(strings)
     val stringIds = strings.withIndex().associate { (idx, value) -> value to idx }
@@ -34,7 +39,7 @@ fun writeProgramPackage(topology: NetworkTopology, outputDir: Path, packageName:
     val metaSize = stringTableBytes.size + instructionsLength
 
     val baseOffset = PACKAGE_HEADER_SIZE + metaSize
-    val blocks = buildBytecodeBlocks(topology, baseOffset)
+    val blocks = buildBytecodeBlocks(topology, bytecodeByNode, baseOffset)
 
     val instructions = buildInstructionStream(topology, stringIds, blocks)
     check(instructions.size == instructionsLength) {
@@ -164,11 +169,19 @@ private fun buildInstructionStream(
 private fun idOf(value: String, stringIds: Map<String, Int>): Int =
     stringIds[value] ?: error("Missing string id for '$value'")
 
-private fun buildBytecodeBlocks(topology: NetworkTopology, baseOffset: Int): List<BytecodeBlock> {
+private fun buildBytecodeBlocks(
+    topology: NetworkTopology,
+    bytecodeByNode: Map<String, ByteArray>,
+    baseOffset: Int
+): List<BytecodeBlock> {
     val blocks = mutableListOf<BytecodeBlock>()
     var offset = baseOffset
     topology.nodes.forEach { node ->
-        val bytes = buildEmptySolbc(node.type)
+        val bytes = bytecodeByNode[node.name]
+            ?: when (node.type) {
+                NodeType.HARDWARE -> error("Missing bytecode for hardware node '${node.name}'")
+                NodeType.SOFTWARE -> buildEmptySolbc(node.type)
+            }
         blocks += BytecodeBlock(node.name, offset, bytes)
         offset += bytes.size
     }
@@ -176,7 +189,16 @@ private fun buildBytecodeBlocks(topology: NetworkTopology, baseOffset: Int): Lis
 }
 
 private fun buildEmptySolbc(type: NodeType): ByteArray {
-    val buffer = ByteBuffer.allocate(CONTAINER_HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN)
+    return buildSolbcContainer(type, byteArrayOf(), byteArrayOf())
+}
+
+internal fun buildSolbcContainer(
+    type: NodeType,
+    initBytes: ByteArray,
+    runBytes: ByteArray
+): ByteArray {
+    val buffer = ByteBuffer.allocate(CONTAINER_HEADER_SIZE + initBytes.size + runBytes.size)
+        .order(ByteOrder.LITTLE_ENDIAN)
     buffer.put(CONTAINER_MAGIC.toByteArray(StandardCharsets.US_ASCII))
     buffer.put(0x01) // container_version
     buffer.put(
@@ -187,8 +209,10 @@ private fun buildEmptySolbc(type: NodeType): ByteArray {
     )
     buffer.put(0x01) // isa_version (placeholder)
     buffer.put(0x00) // flags
-    buffer.putInt(0) // init_size
-    buffer.putInt(0) // run_size
+    buffer.putInt(initBytes.size)
+    buffer.putInt(runBytes.size)
+    buffer.put(initBytes)
+    buffer.put(runBytes)
     return buffer.array()
 }
 

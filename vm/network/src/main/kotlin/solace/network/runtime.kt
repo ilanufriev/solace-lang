@@ -1,5 +1,8 @@
 package solace.network
 
+import solace.utils.dotgen.DNP
+import solace.utils.dotgen.DOTConnection
+import solace.utils.dotgen.DOTNetwork
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -10,8 +13,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.collections.map
 
 data class NodePorts(
     val inputs: Map<String, ReceiveChannel<Any?>>,
@@ -26,23 +32,49 @@ data class NetworkNode(
 
 data class BuiltNetwork(
     val nodes: List<NetworkNode>,
-    val connections: List<Connection>
+    val connections: List<Connection>,
+    val sniffers: List<Job> = emptyList(),
+    val sniffWriter: java.io.BufferedWriter? = null
 ) {
     // Launch VMs for all nodes using the provided factory within the given scope.
     fun launch(scope: CoroutineScope, factory: NodeVmFactory = StubNodeVmFactory()): List<Job> =
         nodes.map { node -> factory.create(node).launch(scope) }
+
+    fun toDOTNetwork(): DOTNetwork =
+        DOTNetwork(connections.map { DOTConnection(DNP(it.from.node, it.from.port), DNP(it.to.node, it.to.port)) })
 }
 
 // Construct channel wiring for the loaded program, validating ports and producing runnable nodes.
-fun buildNetwork(program: LoadedProgram): BuiltNetwork {
+fun buildNetwork(
+    program: LoadedProgram,
+    sniffConnections: Boolean = false,
+    snifferScope: CoroutineScope? = null,
+    sniffLimit: Int? = null,
+    sniffCsv: Boolean = false,
+    sniffCsvFile: java.nio.file.Path? = null
+): BuiltNetwork {
+    require(!(sniffConnections && snifferScope == null)) {
+        "Sniffing connections requires a coroutine scope"
+    }
+
     val nodeLookup = program.nodes.associateBy { it.name }
+    val snifferJobs = mutableListOf<Job>()
+    val sniffLock = Any()
+    val sniffWriter = sniffCsvFile?.let { path ->
+        val parent = path.parent ?: path.toAbsolutePath().parent
+        if (parent != null) {
+            java.nio.file.Files.createDirectories(parent)
+        }
+        java.nio.file.Files.newBufferedWriter(path)
+    }
     val portMaps = program.nodes.associate { node ->
         val inputs = mutableMapOf<String, ReceiveChannel<Any?>>()
         val outputs = mutableMapOf<String, SendChannel<Any?>>()
         val self = mutableMapOf<String, Channel<Any?>>()
 
         node.ports.self.forEach { selfPort ->
-            val ch = Channel<Any?>(Channel.UNLIMITED)
+            // Bounded to prevent runaway growth on self ports
+            val ch = Channel<Any?>(Channel.BUFFERED)
             inputs[selfPort] = ch
             outputs[selfPort] = ch
             self[selfPort] = ch
@@ -64,7 +96,18 @@ fun buildNetwork(program: LoadedProgram): BuiltNetwork {
             "Node '${toNode.name}' has no input port '${connection.to.port}'"
         }
 
-        val channel = Channel<Any?>(Channel.UNLIMITED)
+        val (outChannel, inChannel, snifferJob) = createChannel(
+            connection,
+            sniffConnections,
+            snifferScope,
+            sniffLimit,
+            sniffCsv,
+            sniffWriter,
+            sniffLock
+        )
+        if (snifferJob != null) {
+            snifferJobs += snifferJob
+        }
         val fromPorts = portMaps.getValue(fromNode.name)
         val toPorts = portMaps.getValue(toNode.name)
 
@@ -75,8 +118,8 @@ fun buildNetwork(program: LoadedProgram): BuiltNetwork {
             "Input port '${connection.to.port}' of node '${toNode.name}' is already connected"
         }
 
-        fromPorts.second[connection.from.port] = channel
-        toPorts.first[connection.to.port] = channel
+        fromPorts.second[connection.from.port] = outChannel
+        toPorts.first[connection.to.port] = inChannel
     }
 
     val networkNodes = program.nodes.map { node ->
@@ -93,7 +136,57 @@ fun buildNetwork(program: LoadedProgram): BuiltNetwork {
         )
     }
 
-    return BuiltNetwork(networkNodes, program.connections)
+    return BuiltNetwork(networkNodes, program.connections, snifferJobs, sniffWriter)
+}
+
+private fun createChannel(
+    connection: Connection,
+    sniff: Boolean,
+    scope: CoroutineScope?,
+    sniffLimit: Int?,
+    sniffCsv: Boolean,
+    sniffWriter: java.io.BufferedWriter?,
+    sniffLock: Any
+): Triple<SendChannel<Any?>, ReceiveChannel<Any?>, Job?> {
+    if (!sniff) {
+        // Bounded channels provide backpressure between nodes
+        val ch = Channel<Any?>(Channel.BUFFERED)
+        return Triple(ch, ch, null)
+    }
+    val snifferScope = scope ?: error("Sniffer scope is required when sniffing is enabled")
+    val wire = Channel<Any?>(Channel.BUFFERED)
+    val deliver = Channel<Any?>(Channel.BUFFERED)
+    var remaining = sniffLimit ?: Int.MAX_VALUE
+    val job = snifferScope.launch(Dispatchers.Default) {
+        try {
+            for (value in wire) {
+                if (remaining > 0) {
+                    if (sniffCsv) {
+                        val line = "${connection.from.node},${connection.from.port},${connection.to.node},${connection.to.port},$value"
+                        if (sniffWriter != null) {
+                            synchronized(sniffLock) {
+                                sniffWriter.write(line)
+                                sniffWriter.newLine()
+                                sniffWriter.flush()
+                            }
+                        } else {
+                            println(line)
+                        }
+                    } else {
+                        println("[sniff] ${connection.from.node}.${connection.from.port} -> ${connection.to.node}.${connection.to.port}: $value")
+                    }
+                    remaining--
+                    if (remaining == 0 && sniffLimit != null) {
+                        System.err.println("[sniff] limit reached for ${connection.from.node}.${connection.from.port} -> ${connection.to.node}.${connection.to.port}, muting further output")
+                    }
+                }
+                deliver.send(value)
+            }
+        } finally {
+            deliver.close()
+        }
+    }
+    return Triple(wire, deliver, job)
 }
 
 interface NodeVm {
@@ -180,10 +273,34 @@ private class LoggingNodeVm(
 /**
  * Convenience entry point for launching a loaded program with stub VMs.
  */
-fun runNetwork(program: LoadedProgram, logIntervalMs: Long = 1_000L, logPorts: Boolean = false) = runBlocking {
-    val network = buildNetwork(program)
+fun runNetwork(
+    program: LoadedProgram,
+    logIntervalMs: Long = 1_000L,
+    logPorts: Boolean = false,
+    sniffConnections: Boolean = false,
+    vmFactory: NodeVmFactory? = null,
+    stopAfterMs: Long? = null,
+    sniffLimit: Int? = null,
+    sniffCsv: Boolean = false,
+    sniffCsvFile: java.nio.file.Path? = null
+) = runBlocking {
+    val network = buildNetwork(program, sniffConnections, this, sniffLimit, sniffCsv, sniffCsvFile)
     println("Launching ${network.nodes.size} node(s), ${network.connections.size} connection(s)")
-    val jobs = network.launch(this, StubNodeVmFactory(logIntervalMs, logPorts))
-    println("Network is running; press Ctrl+C to stop.")
-    jobs.joinAll()
+    val factory = vmFactory ?: StubNodeVmFactory(logIntervalMs, logPorts)
+    val jobs = network.launch(this, factory)
+    if (stopAfterMs != null) {
+        println("Network will stop after ${stopAfterMs} ms.")
+        val completed = withTimeoutOrNull(stopAfterMs) { jobs.joinAll() } != null
+        if (!completed) {
+            println("Time limit reached, stopping network.")
+        }
+        jobs.forEach { it.cancelAndJoin() }
+        network.sniffers.forEach { it.cancelAndJoin() }
+        network.sniffWriter?.close()
+    } else {
+        println("Network is running; press Ctrl+C to stop.")
+        jobs.joinAll()
+        network.sniffers.forEach { it.join() }
+        network.sniffWriter?.close()
+    }
 }

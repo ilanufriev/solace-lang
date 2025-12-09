@@ -1,6 +1,9 @@
 package solace.network
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -90,5 +93,46 @@ class RuntimeTest {
 
         // Should not throw
         StubNodeVmFactory().create(node)
+    }
+
+    @Test
+    fun `sniffer forwards traffic between nodes`() = runBlocking {
+        val nodeA = LoadedNode(
+            name = "A",
+            type = NodeType.SOFTWARE,
+            ports = PortSignature(
+                inputs = emptyList(),
+                outputs = listOf("out"),
+                self = emptyList()
+            ),
+            bytecode = byteArrayOf()
+        )
+        val nodeB = LoadedNode(
+            name = "B",
+            type = NodeType.SOFTWARE,
+            ports = PortSignature(
+                inputs = listOf("in"),
+                outputs = emptyList(),
+                self = emptyList()
+            ),
+            bytecode = byteArrayOf()
+        )
+        val program = LoadedProgram(
+            nodes = listOf(nodeA, nodeB),
+            connections = listOf(
+                Connection(
+                    Endpoint("A", "out"),
+                    Endpoint("B", "in")
+                )
+            )
+        )
+
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val network = buildNetwork(program, sniffConnections = true, snifferScope = scope)
+        val sender = network.nodes.first { it.descriptor.name == "A" }.ports.outputs.getValue("out")
+        val receiver = network.nodes.first { it.descriptor.name == "B" }.ports.inputs.getValue("in")
+
+        sender.send(123)
+        assertEquals(123, receiver.receive())
     }
 }
