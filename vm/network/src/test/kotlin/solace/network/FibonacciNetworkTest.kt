@@ -149,8 +149,8 @@ class FibonacciNetworkTest {
         val sniffValues = Files.readAllLines(sniffFile)
             .mapNotNull { line ->
                 val parts = line.split(',')
-                if (parts.size == 5 && parts[0] == "FibStepper" && parts[2] == "FibSink") {
-                    parts[4].toIntOrNull()
+                if (parts.size == 6 && parts[1] == "FibStepper" && parts[3] == "FibSink") {
+                    parts[5].toIntOrNull()
                 } else null
             }
             .take(expectedCount)

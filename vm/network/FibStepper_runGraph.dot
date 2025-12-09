@@ -1,0 +1,32 @@
+digraph Network {
+	node [shape=rect,color=gray];
+	edge [color=gray];
+
+	step -> t [taillabel="out_step0",headlabel="in"];
+	prev -> a [taillabel="out_prev0",headlabel="in"];
+	curr -> b [taillabel="out_curr0",headlabel="in"];
+	a -> Adder2 [taillabel="out",headlabel="in1"];
+
+	subgraph helper_b_out {
+		node [shape=circle,width=0,label="",color=gray];
+		helper_b_out;
+	}
+
+	b -> helper_b_out [arrowhead=none,taillabel="out"];
+	helper_b_out -> Adder2 [headlabel=in2];
+	helper_b_out -> prev [headlabel=in_prev1];
+	t -> Multiplier0 [taillabel="out",headlabel="in1"];
+	0 -> Multiplier0 [taillabel="",headlabel="in2"];
+	Adder2 -> Adder1 [taillabel="out",headlabel="in1"];
+	Multiplier0 -> Adder1 [taillabel="out",headlabel="in2"];
+	Adder1 -> next [taillabel="out",headlabel="in"];
+
+	subgraph helper_next_out {
+		node [shape=circle,width=0,label="",color=gray];
+		helper_next_out;
+	}
+
+	next -> helper_next_out [arrowhead=none,taillabel="out"];
+	helper_next_out -> fib [headlabel=in_fib0];
+	helper_next_out -> curr [headlabel=in_curr1];
+}

@@ -529,13 +529,13 @@ network {
   - для каждого соединения создаётся один буферизованный канал, используемый и отправителем, и получателем;
 - при включённом sniff‑режиме:
   - создаются два канала: `wire` (канал «провода») и `deliver` (канал доставки);
-  - в отдельной корутине запускается sniffer, который:
-    - считывает значения из `wire`;
+    - в отдельной корутине запускается sniffer, который:
+      - считывает значения из `wire`;
     - при активной настройке sniff‑режима:
-      - печатает сообщения в текстовом формате `[sniff] A.out -> B.in: value`;
-      - или записывает строки в CSV‑формате `from_node,from_port,to_node,to_port,value`;
-      - соблюдает ограничение по числу записей, отключая вывод при достижении лимита;
-    - пересылает каждое значение далее в канал `deliver`.
+      - печатает сообщения в текстовом формате `[sniff t=123ns] A.out -> B.in: value`;
+      - или записывает строки в CSV‑формате `timestamp_ns,from_node,from_port,to_node,to_port,value` (timestamp_ns — наносекунды с начала работы сети);
+        - соблюдает ограничение по числу записей, отключая вывод при достижении лимита;
+      - пересылает каждое значение далее в канал `deliver`.
 
 Такой подход позволяет прозрачно «подключить осциллограф» к любому соединению в сети, не изменяя логику узловых ВМ и не вмешиваясь в формат пакетного файла.
 
@@ -839,3 +839,416 @@ AsmParser поддерживает несколько режимов:
 Реализация сопровождается достаточно подробной спецификацией форматов выходных файлов и комплексным набором модульных и интеграционных тестов, проверяющих корректность парсинга, анализа сети, генерации байткода и исполнения программ. Это создаёт основу для дальнейшего развития системы: расширения языка, добавления новых типов узловых ВМ, экспериментирования с альтернативными моделями вычислений и интеграции с реальными встраиваемыми и распределёнными системами.
 
 \newpage
+
+# Приложение
+
+## fibonacci_hard.solace
+
+```c++
+/// Hardware-only Fibonacci pipeline with three nodes:
+/// 1) TickSource: emits a pulse each cycle to drive the computation.
+/// 2) FibStepper: maintains Fibonacci state (prev, curr) and outputs the next value on each tick.
+/// 3) FibSink: receives the Fibonacci stream; keeps the last value in a self FIFO (acts as a collector).
+
+node TickSource : hardware (
+    out: tick;
+    self: loop;
+) {
+    init {
+        // seed the loop so the first run has something to read
+        loop <- 0;
+    }
+
+    run {
+        // keep a simple counter for demonstration (not used by other nodes)
+        n = $loop + 1;
+        tick <- n;
+        loop <- n;
+    }
+}
+
+node FibStepper : hardware (
+    in: step;
+    out: fib;
+    self: prev, curr;
+) {
+    init {
+        // Fibonacci seeds F0=0, F1=1
+        prev <- 0;
+        curr <- 1;
+    }
+
+    run {
+        // consume tick (blocks until available), but keep math unchanged via *0
+        t = $step;
+        a = $prev;
+        b = $curr;
+        next = a + b + t * 0;
+        fib <- next;
+
+        // advance state
+        prev <- b;
+        curr <- next;
+    }
+}
+
+node FibSink : hardware (
+    in: inFib;
+    self: last;
+) {
+    init {
+        last <- 0;
+    }
+
+    run {
+        v = $inFib;
+        last <- v; // keep the last received Fibonacci number
+    }
+}
+
+network {
+    TickSource.tick -> FibStepper.step;
+    FibStepper.fib  -> FibSink.inFib;
+}
+```
+
+\newpage
+
+## fibonacci_mixed.solace
+
+```c++
+/// Mixed hardware/software Fibonacci pipeline:
+/// - TickSource (hardware): emits an increasing tick each cycle.
+/// - FibStepper (software): keeps Fibonacci state and outputs the next number on each tick.
+/// - FibPrinter (software): prints each Fibonacci number.
+
+node TickSource : hardware (
+    out: tick;
+    self: loop;
+) {
+    init {
+        loop <- 0;
+    }
+
+    run {
+        n = $loop + 1;
+        tick <- n;
+        loop <- n;
+    }
+}
+
+node FibStepper : software (
+    in: step;
+    out: fib;
+    self: prev, curr;
+) {
+    init {
+        prev <- 0;
+        curr <- 1;
+    }
+
+    run {
+        int t = $step; // blocks until a tick arrives
+        int a = $prev;
+        int b = $curr;
+        int next = a + b + t * 0; // keep dependency on tick without changing math
+        fib <- next;
+
+        prev <- b;
+        curr <- next;
+    }
+}
+
+node FibPrinter : software (
+    in: inFib;
+) {
+    init {
+        // nothing
+    }
+
+    run {
+        int v = $inFib;
+        print("FIB: " + v);
+    }
+}
+
+network {
+    TickSource.tick -> FibStepper.step;
+    FibStepper.fib  -> FibPrinter.inFib;
+}
+```
+
+\newpage
+
+## fibonacci_soft.solace
+
+```c++
+/// Software-only Fibonacci pipeline mirroring `fibonacci_hard.solace`.
+/// Nodes:
+/// 1) TickSource: emits a tick every run (increments a self counter).
+/// 2) FibStepper: keeps Fibonacci state (prev, curr) and outputs next on each tick.
+/// 3) FibPrinter: consumes Fibonacci stream and prints each value.
+
+node TickSource : software (
+    out: tick;
+    self: loop;
+) {
+    init {
+        loop <- 0;
+    }
+
+    run {
+        int n = $loop + 1;
+        tick <- n;
+        loop <- n;
+    }
+}
+
+node FibStepper : software (
+    in: step;
+    out: fib;
+    self: prev, curr;
+) {
+    init {
+        prev <- 0;
+        curr <- 1;
+    }
+
+    run {
+        int t = $step; // blocks until tick arrives
+        int a = $prev;
+        int b = $curr;
+        int next = a + b + t * 0; // t*0 keeps dependency without changing math
+        fib <- next;
+
+        prev <- b;
+        curr <- next;
+    }
+}
+
+node FibPrinter : software (
+    in: inFib;
+) {
+    init {
+        // nothing
+    }
+
+    run {
+        int v = $inFib;
+        print("FIB: " + v);
+    }
+}
+
+network {
+    TickSource.tick -> FibStepper.step;
+    FibStepper.fib  -> FibPrinter.inFib;
+}
+```
+
+\newpage
+
+## FibonacciNetworkTest.kt
+
+```kotlin
+package solace.network
+
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.runBlocking
+import kotlin.test.Test
+import solace.vm.internal.sim.asm.AsmParser
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.test.assertEquals
+
+private const val SOLBC_HEADER_SIZE = 16
+
+class FibonacciNetworkTest {
+    @Test
+    fun `fibonacci pipeline matches first 45 numbers`() = runBlocking {
+        val tick = LoadedNode(
+            name = "TickSource",
+            type = NodeType.HARDWARE,
+            ports = PortSignature(inputs = emptyList(), outputs = listOf("tick"), self = emptyList()),
+            bytecode = solbc(
+                NodeType.HARDWARE,
+                initCode = encodeAsm(
+                    """
+                    .new %Fifo ${'$'}tick
+                    .immcon ${'$'}tick@in #1
+                    """
+                ),
+                runCode = encodeAsm(
+                    """
+                    .new %Fifo ${'$'}tick
+                    .immcon ${'$'}tick@in #1
+                    """
+                )
+            )
+        )
+
+        val fib = LoadedNode(
+            name = "FibStepper",
+            type = NodeType.HARDWARE,
+            ports = PortSignature(inputs = listOf("step"), outputs = listOf("fib"), self = listOf("prev", "curr")),
+            bytecode = solbc(
+                NodeType.HARDWARE,
+                initCode = encodeAsm(
+                    """
+                    .new %Fifo ${'$'}step ?
+                    .new %Fifo ${'$'}fib ?
+                    .new %Fifo ${'$'}prev ?
+                    .new %Fifo ${'$'}curr ?
+                    .immcon ${'$'}prev@in_prev0 #0 ?
+                    .immcon ${'$'}curr@in_curr0 #1 ?
+                    """
+                ),
+                runCode = encodeAsm(
+                    """
+                    .new %Fifo ${'$'}step
+                    .new %Fifo ${'$'}fib
+                    .new %Fifo ${'$'}prev
+                    .new %Fifo ${'$'}curr
+                    .new %Fifo ${'$'}tickSink
+                    .new %Register ${'$'}a
+                    .new %Register ${'$'}b
+                    .new %Adder ${'$'}add
+                    .new %Register ${'$'}next
+                    .con ${'$'}step@out_step0 ${'$'}tickSink@in_drop0
+                    .con ${'$'}prev@out_prev0 ${'$'}a@in
+                    .con ${'$'}curr@out_curr0 ${'$'}b@in
+                    .con ${'$'}a@out ${'$'}add@in1
+                    .con ${'$'}b@out ${'$'}add@in2
+                    .con ${'$'}add@out ${'$'}next@in
+                    .con ${'$'}b@out ${'$'}prev@in_prev1
+                    .con ${'$'}next@out ${'$'}curr@in_curr1
+                    .con ${'$'}next@out ${'$'}fib@in_fib0
+                    """
+                )
+            )
+        )
+
+        val sink = LoadedNode(
+            name = "FibSink",
+            type = NodeType.HARDWARE,
+            ports = PortSignature(inputs = listOf("inFib"), outputs = listOf("last"), self = emptyList()),
+            bytecode = solbc(
+                NodeType.HARDWARE,
+                initCode = encodeAsm(
+                    """
+                    .new %Fifo ${'$'}inFib ?
+                    .new %Fifo ${'$'}last ?
+                    .immcon ${'$'}last@in_last0 #0 ?
+                    """
+                ),
+                runCode = encodeAsm(
+                    """
+                    .new %Fifo ${'$'}inFib
+                    .new %Fifo ${'$'}last
+                    .new %Register ${'$'}v
+                    .con ${'$'}inFib@out_inFib0 ${'$'}v@in
+                    .con ${'$'}v@out ${'$'}last@in_last1
+                    """
+                )
+            )
+        )
+
+        val program = LoadedProgram(
+            nodes = listOf(tick, fib, sink),
+            connections = listOf(
+                Connection(Endpoint("TickSource", "tick"), Endpoint("FibStepper", "step")),
+                Connection(Endpoint("FibStepper", "fib"), Endpoint("FibSink", "inFib"))
+            )
+        )
+
+        val sniffFile = Files.createTempFile("fib-sniff", ".csv")
+        val expectedCount = 45
+
+        val network = buildNetwork(
+            program,
+            sniffConnections = true,
+            snifferScope = this,
+            sniffLimit = expectedCount,
+            sniffCsv = true,
+            sniffCsvFile = sniffFile
+        )
+        val jobs = network.launch(this, SimNodeVmFactory())
+
+        val lastChannel = network.nodes
+            .single { it.descriptor.name == "FibSink" }
+            .ports
+            .outputs
+            .getValue("last") as Channel<Any?>
+
+        val observed = mutableListOf<Int>()
+        // First value is the sink's initial seed; skip it.
+        repeat(expectedCount + 1) {
+            observed += (lastChannel.receive() as Number).toInt()
+        }
+
+        val filtered = observed.drop(1)
+        // The hardware pipeline outputs from F2 onward (1, 2, 3, 5, ...).
+        val expected = generateFibonacci(expectedCount + 2).drop(2)
+        assertEquals(expected, filtered)
+
+        jobs.forEach { it.cancelAndJoin() }
+        network.sniffers.forEach { it.cancelAndJoin() }
+        network.sniffWriter?.close()
+
+        val sniffValues = Files.readAllLines(sniffFile)
+            .mapNotNull { line ->
+                val parts = line.split(',')
+                if (parts.size == 6 && parts[1] == "FibStepper" && parts[3] == "FibSink") {
+                    parts[5].toIntOrNull()
+                } else null
+            }
+            .take(expectedCount)
+        assertEquals(expected, sniffValues)
+    }
+}
+
+private fun solbc(nodeType: NodeType, initCode: String = "", runCode: String): ByteArray {
+    val initBytes = initCode.toByteArray(StandardCharsets.UTF_8)
+    val runBytes = runCode.toByteArray(StandardCharsets.UTF_8)
+    val buffer = ByteBuffer.allocate(SOLBC_HEADER_SIZE + initBytes.size + runBytes.size)
+        .order(ByteOrder.LITTLE_ENDIAN)
+
+    buffer.put("SOLB".toByteArray(StandardCharsets.US_ASCII))
+    buffer.put(0x01) // container_version
+    buffer.put(
+        when (nodeType) {
+            NodeType.HARDWARE -> 0
+            NodeType.SOFTWARE -> 1
+        }.toByte()
+    )
+    buffer.put(0x01) // isa_version placeholder
+    buffer.put(0x00) // flags
+    buffer.putInt(initBytes.size)
+    buffer.putInt(runBytes.size)
+    buffer.put(initBytes)
+    buffer.put(runBytes)
+
+    return buffer.array()
+}
+
+private fun encodeAsm(source: String): String =
+    AsmParser.encodeInstructionsFromString(source.trimIndent()).joinToString("")
+
+private fun generateFibonacci(count: Int): List<Int> {
+    val result = mutableListOf<Int>()
+    var a = 0
+    var b = 1
+    repeat(count) {
+        result += a
+        val next = a + b
+        a = b
+        b = next
+    }
+    return result
+}
+```
+
+\newline

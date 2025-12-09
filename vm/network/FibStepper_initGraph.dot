@@ -1,0 +1,7 @@
+digraph Network {
+	node [shape=rect,color=gray];
+	edge [color=gray];
+
+	0 -> prev [taillabel="",headlabel="in_prev0"];
+	1 -> curr [taillabel="",headlabel="in_curr0"];
+}

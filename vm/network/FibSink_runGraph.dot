@@ -1,0 +1,7 @@
+digraph Network {
+	node [shape=rect,color=gray];
+	edge [color=gray];
+
+	inFib -> v [taillabel="out_inFib0",headlabel="in"];
+	v -> last [taillabel="out",headlabel="in_last1"];
+}

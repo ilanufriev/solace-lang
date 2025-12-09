@@ -58,6 +58,7 @@ fun buildNetwork(
         "Sniffing connections requires a coroutine scope"
     }
 
+    val sniffStartTimeNs = System.nanoTime()
     val nodeLookup = program.nodes.associateBy { it.name }
     val snifferJobs = mutableListOf<Job>()
     val sniffLock = Any()
@@ -103,6 +104,7 @@ fun buildNetwork(
             snifferScope,
             sniffLimit,
             sniffCsv,
+            sniffStartTimeNs,
             sniffWriter,
             sniffLock
         )
@@ -146,6 +148,7 @@ private fun createChannel(
     scope: CoroutineScope?,
     sniffLimit: Int?,
     sniffCsv: Boolean,
+    sniffStartTimeNs: Long,
     sniffWriter: java.io.BufferedWriter?,
     sniffLock: Any
 ): Triple<SendChannel<Any?>, ReceiveChannel<Any?>, Job?> {
@@ -162,8 +165,9 @@ private fun createChannel(
         try {
             for (value in wire) {
                 if (remaining > 0) {
+                    val timestampNs = System.nanoTime() - sniffStartTimeNs
                     if (sniffCsv) {
-                        val line = "${connection.from.node},${connection.from.port},${connection.to.node},${connection.to.port},$value"
+                        val line = "$timestampNs,${connection.from.node},${connection.from.port},${connection.to.node},${connection.to.port},$value"
                         if (sniffWriter != null) {
                             synchronized(sniffLock) {
                                 sniffWriter.write(line)
@@ -174,7 +178,7 @@ private fun createChannel(
                             println(line)
                         }
                     } else {
-                        println("[sniff] ${connection.from.node}.${connection.from.port} -> ${connection.to.node}.${connection.to.port}: $value")
+                        println("[sniff t=${timestampNs}ns] ${connection.from.node}.${connection.from.port} -> ${connection.to.node}.${connection.to.port}: $value")
                     }
                     remaining--
                     if (remaining == 0 && sniffLimit != null) {
