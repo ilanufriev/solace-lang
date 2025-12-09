@@ -20,6 +20,7 @@ import solace.vm.internal.harv.instruction.Not
 import solace.vm.internal.harv.instruction.Or
 import solace.vm.internal.harv.instruction.Print
 import solace.vm.internal.harv.instruction.Push
+import solace.vm.internal.harv.instruction.PushSize
 import solace.vm.internal.harv.instruction.Put
 import solace.vm.internal.harv.instruction.Sub
 
@@ -110,6 +111,34 @@ class NewStackMachine() {
     }
 
     fun getStack(): List<HarvVal> = stack
+    
+    private fun getFifo(fifoName: String): HarvFifo {
+        val fifo = variables[fifoName]
+            ?: throw Exception("No fifo $fifoName found")
+        if (fifo !is HarvFifo) {
+            throw Exception("$fifoName is not a fifo")
+        }
+
+        return fifo
+    }
+
+    fun pushToFifo(fifoName: String, value: Int) {
+        val fifo = getFifo(fifoName)
+
+        fifo.putToFifo(value)
+    }
+
+    fun pullFromFifo(fifoName: String): Int {
+        val fifo = getFifo(fifoName)
+
+        return fifo.pushFromFifo()
+    }
+
+    fun getFifoSize(fifoName: String): Int {
+        val fifo = getFifo(fifoName)
+
+        return fifo.queue.size
+    }
 
     private fun executeInstruction(inst: Instruction) {
         when (inst) {
@@ -123,8 +152,19 @@ class NewStackMachine() {
                        throw Exception("Variable ${inst.identifier} is not defined")
                    }
 
-                   stack.add(variables[inst.identifier!!]!!)
+                   val variable = variables[inst.identifier]!!
+                   if (variable is HarvFifo) {
+                       stack.add(HarvInt(variable.pushFromFifo()))
+                   } else {
+                       stack.add(variables[inst.identifier!!]!!)
+                   }
                }
+            }
+
+            is PushSize -> {
+                val fifoName = inst.fifoName!!
+                val fifo = getFifo(fifoName)
+                stack.add(HarvInt(fifo.queue.size))
             }
 
             is Put -> {
@@ -150,20 +190,19 @@ class NewStackMachine() {
                                 throw Exception("Type mismatch for variable $name: expected HarvString, got ${x::class.simpleName}")
                             }
                         }
-                        is HarvIdentifier -> {
-                            if (x !is HarvIdentifier) {
-                                throw Exception("Type mismatch for variable $name: expected HarvIdentifier, got ${x::class.simpleName}")
-                            }
-                        }
-                        is HarvFifo -> {
-                            if (x !is HarvFifo) {
-                                throw Exception("Type mismatch for variable $name: expected HarvFifo, got ${x::class.simpleName}")
-                            }
-                        }
                     }
                 }
 
-                variables[name] = x
+                // special case to handle fifos
+                if (existingVariable is HarvFifo) {
+                    if (x !is HarvInt) {
+                        throw Exception("Only integers can be put into fifo")
+                    }
+
+                    existingVariable.putToFifo(x.value)
+                } else {
+                    variables[name] = x
+                }
             }
 
             is Branch -> {

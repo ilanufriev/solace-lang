@@ -71,6 +71,7 @@ object AsmParser {
         InstructionType(instructionPrefix + Or::class.simpleName!!.lowercase(), 0x13) to ::Or,
         InstructionType(instructionPrefix + Not::class.simpleName!!.lowercase(), 0x14) to ::Not,
         InstructionType(instructionPrefix + Print::class.simpleName!!.lowercase(), 0x15) to ::Print,
+        InstructionType(instructionPrefix + PushSize::class.simpleName!!.lowercase(), 0x16) to ::Push,
     )
 
     fun matchPatterns(s: String, matchPatterns: Array<String>): ArrayList<String?> {
