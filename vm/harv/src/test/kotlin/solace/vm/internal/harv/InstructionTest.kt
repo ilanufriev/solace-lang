@@ -6,21 +6,22 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class InstructionTest {
-    @Test fun testRenderingToText() {
-        assertTrue(Add().toString()   == ".add")
-        assertTrue(Sub().toString()   == ".sub")
-        assertTrue(Mul().toString()   == ".mul")
-        assertTrue(Div().toString()   == ".div")
-        assertTrue(Mod().toString()   == ".mod")
-        assertTrue(Lt().toString()    == ".lt")
-        assertTrue(Gt().toString()    == ".gt")
-        assertTrue(Le().toString()    == ".le")
-        assertTrue(Ge().toString()    == ".ge")
-        assertTrue(Eq().toString()    == ".eq")
-        assertTrue(Neq().toString()   == ".neq")
-        assertTrue(And().toString()   == ".and")
-        assertTrue(Or().toString()    == ".or")
-        assertTrue(Not().toString()   == ".not")
+    @Test
+    fun testRenderingToText() {
+        assertTrue(Add().toString() == ".add")
+        assertTrue(Sub().toString() == ".sub")
+        assertTrue(Mul().toString() == ".mul")
+        assertTrue(Div().toString() == ".div")
+        assertTrue(Mod().toString() == ".mod")
+        assertTrue(Lt().toString() == ".lt")
+        assertTrue(Gt().toString() == ".gt")
+        assertTrue(Le().toString() == ".le")
+        assertTrue(Ge().toString() == ".ge")
+        assertTrue(Eq().toString() == ".eq")
+        assertTrue(Neq().toString() == ".neq")
+        assertTrue(And().toString() == ".and")
+        assertTrue(Or().toString() == ".or")
+        assertTrue(Not().toString() == ".not")
         assertTrue(Print().toString() == ".print")
 
         val branch = Branch()
@@ -60,15 +61,18 @@ class InstructionTest {
         assertEquals(putText, put.toString())
     }
 
-    @Test fun testParsingProgram() {
-        val byteCode = AsmParser.encodeInstructionsFromString($$$"""
+    @Test
+    fun testParsingProgram() {
+        val byteCode = AsmParser.encodeInstructionsFromString(
+            $$$"""
             .define %int $x
             .push #5
             .push #8
             .add
             .put $x
             .branch $labelif $labelelse $labelend
-        """.trimMargin()).joinToString("")
+        """.trimMargin()
+        ).joinToString("")
 
         // println(byteCode)
 
@@ -87,17 +91,177 @@ class InstructionTest {
 }
 
 class NewStackMachineTest {
-    @Test fun basicArithmetic() {
-        val byteCode = AsmParser.encodeInstructionsFromString($$$"""
-            .push #5
-            .push #8
-            .add
-            .sub #2
-        """.trimMargin()).joinToString("")
+    fun p(code: String): Pair<NewStackMachine.ExecStatus, List<HarvVal>> {
+        val byteCode = AsmParser.encodeInstructionsFromString(code.trimMargin()).joinToString("")
 
         val vm = NewStackMachine()
         vm.loadByteCode(byteCode)
 
+        val status = vm.tryRun()
+        val stack = vm.getStack()
 
+        return Pair(status, stack)
+    }
+
+    @Test
+    fun basic5plus8minus2shouldBe11() {
+        val (status, stack) = p(
+            """
+            .push #5
+            .push #8
+            .add
+            .push #2
+            .sub
+        """
+        )
+
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(11, (stack.last() as? HarvInt)?.value)
+    }
+
+    @Test
+    fun stringConcatenation() {
+        val (status, stack) = p(
+            """
+            .push +"Ping"
+            .push +"Pong"
+            .add
+        """
+        )
+
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals("PingPong", (stack.last() as? HarvString)?.value)
+    }
+
+    @Test
+    fun concatStringAndNumber() {
+        val (status, stack) = p(
+            """
+            .push +"Ping"
+            .push #69
+            .add
+        """
+        )
+
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals("Ping69", (stack.last() as? HarvString)?.value)
+    }
+
+    @Test
+    fun gotoGoesTo() {
+        val (status, stack) = p(
+            $$"""
+            .push #1
+            .push #2
+            .goto $L1
+            .push #3
+            .push #4
+            .push #5
+            .push #6
+            .label $L1
+            .push #7
+        """
+        )
+
+        val stackList = stack.toList()
+
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(1, (stackList[0] as? HarvInt)?.value)
+        assertEquals(2, (stackList[1] as? HarvInt)?.value)
+        assertEquals(7, (stackList[2] as? HarvInt)?.value)
+    }
+
+    @Test
+    fun branchIfTrue() {
+        val (status, stack) = p(
+            $$"""
+            .push #5
+            .push #2
+            .gt
+            .branch $trueLabel $falseLabel $endLabel
+            .label $trueLabel
+            .push #4
+            .goto $endLabel
+            .label $falseLabel
+            .push #5
+            .label $endLabel
+        """
+        )
+
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(4, (stack.last() as? HarvInt)?.value)
+    }
+
+    @Test
+    fun branchIfFalse() {
+        val (status, stack) = p(
+            $$"""
+            .push #1
+            .push #2
+            .gt
+            .branch $trueLabel $falseLabel $endLabel
+            .label $trueLabel
+            .push #4
+            .goto $endLabel
+            .label $falseLabel
+            .push #5
+            .label $endLabel
+        """
+        )
+
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(5, (stack.last() as? HarvInt)?.value)
+    }
+
+    @Test
+    fun branchIfWithoutElse() {
+        val (status, stack) = p(
+            $$"""
+            .push #3
+            .push #2
+            .gt
+            .branch $trueLabel $endLabel $endLabel
+            .label $trueLabel
+            .push #4
+            .label $endLabel
+        """
+        )
+
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(4, (stack.last() as? HarvInt)?.value)
+
+        val (statusFalse, stackFalse) = p(
+            $$"""
+            .push #1
+            .push #2
+            .gt
+            .branch $trueLabel $endLabel $endLabel
+            .label $trueLabel
+            .push #4
+            .label $endLabel
+        """
+        )
+
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, statusFalse)
+        assertEquals(0, stackFalse.size)
+    }
+
+    @Test
+    fun variables() {
+        val (status, stack) = p(
+            $$"""
+            .push #3
+            .push #1
+            .add
+            .define %int $aaa
+            .put $aaa
+            .push #8
+            .push $aaa
+            .div
+        """
+        )
+
+        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(2, (stack.last() as? HarvInt)?.value)
     }
 }
