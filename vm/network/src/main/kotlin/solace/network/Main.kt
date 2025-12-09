@@ -114,6 +114,7 @@ fun main(args: Array<String>) {
         options.useSimVm -> SimNodeVmFactory()
         else -> MixedNodeVmFactory() // default mixed: simulator for hardware, Harv for software
     }
+
     val duration = options.durationMs ?: if (options.sniff) 5_000L else null
     runNetwork(
         program,

@@ -9,6 +9,8 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.yield
 import solace.vm.Simulator
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import kotlin.io.path.Path
 
 // NodeVmFactory that boots the simulator per node and bridges network channels to simulator FIFOs.
 class SimNodeVmFactory : NodeVmFactory {
@@ -27,6 +29,12 @@ class SimNodeVmFactory : NodeVmFactory {
         check(initStatus == Simulator.ExecStatus.SUCCESS) {
             "Simulator init failed for node '${node.descriptor.name}' with status $initStatus"
         }
+
+        val initGraph = simulator.dumpInitGraphToDOT()
+        val runGraph = simulator.dumpRunGraphToDOT()
+
+        Files.writeString(Path(node.descriptor.name + "_initGraph.dot"), initGraph)
+        Files.writeString(Path(node.descriptor.name + "_runGraph.dot"), runGraph)
 
         return SimNodeVm(node, simulator)
     }

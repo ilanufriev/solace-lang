@@ -17,6 +17,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.Boolean
 import kotlin.collections.map
 
 data class NodePorts(
@@ -34,7 +35,7 @@ data class BuiltNetwork(
     val nodes: List<NetworkNode>,
     val connections: List<Connection>,
     val sniffers: List<Job> = emptyList(),
-    val sniffWriter: java.io.BufferedWriter? = null
+    val sniffWriter: java.io.BufferedWriter? = null,
 ) {
     // Launch VMs for all nodes using the provided factory within the given scope.
     fun launch(scope: CoroutineScope, factory: NodeVmFactory = StubNodeVmFactory()): List<Job> =
@@ -51,7 +52,7 @@ fun buildNetwork(
     snifferScope: CoroutineScope? = null,
     sniffLimit: Int? = null,
     sniffCsv: Boolean = false,
-    sniffCsvFile: java.nio.file.Path? = null
+    sniffCsvFile: java.nio.file.Path? = null,
 ): BuiltNetwork {
     require(!(sniffConnections && snifferScope == null)) {
         "Sniffing connections requires a coroutine scope"

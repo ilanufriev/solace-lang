@@ -27,20 +27,26 @@ class DOTConnection(
 
 
 class DOTNetwork(val connections: List<DOTConnection>) {
-    override fun toString(): String = (
-        arrayOf(
-            "digraph Network {\n",
-            "\tnode [shape=rect,color=gray];\n",
-            "\tedge [color=gray];\n\n"
-        ) + ((connections.groupBy { it.source }).toList().map { (key, value) ->
-            if (value.size == 1) arrayOf("\t${value[0].toString()}\n")
-            else arrayOf(
-                "\n\tsubgraph helper_$key {\n",
-                "\t\tnode [shape=circle,width=0,label=\"\",color=gray];\n",
-                "\t\thelper_$key;\n",
-                "\t}\n\n",
-                "\t${value[0].source.node} -> helper_${key} [arrowhead=none,taillabel=\"${value[0].source.port}\"];\n"
-            ) + (value.map { "\thelper_${key} -> ${it.destination.node} [headlabel=${it.destination.port}];\n" })
-        }).reduce { acc, sublist -> acc + sublist } + "}"
-    ).reduce { acc, cstr -> acc + cstr }
+    override fun toString(): String {
+        if (connections.isEmpty()) {
+            return ""
+        }
+
+        return (
+                arrayOf(
+                    "digraph Network {\n",
+                    "\tnode [shape=rect,color=gray];\n",
+                    "\tedge [color=gray];\n\n"
+                ) + ((connections.groupBy { it.source }).toList().map { (key, value) ->
+                    if (value.size == 1) arrayOf("\t${value[0].toString()}\n")
+                    else arrayOf(
+                        "\n\tsubgraph helper_$key {\n",
+                        "\t\tnode [shape=circle,width=0,label=\"\",color=gray];\n",
+                        "\t\thelper_$key;\n",
+                        "\t}\n\n",
+                        "\t${value[0].source.node} -> helper_${key} [arrowhead=none,taillabel=\"${value[0].source.port}\"];\n"
+                    ) + (value.map { "\thelper_${key} -> ${it.destination.node} [headlabel=${it.destination.port}];\n" })
+                }).reduce { acc, sublist -> acc + sublist } + "}"
+                ).reduce { acc, cstr -> acc + cstr }
+    }
 }

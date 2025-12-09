@@ -254,8 +254,12 @@ class NetlistGraph {
         }
     }
 
-    fun toDOTNetwork(): DOTNetwork =
-        DOTNetwork(
+    fun toDOTNetwork(): DOTNetwork {
+        if (leaves.isEmpty() || connections.isEmpty()) {
+            return DOTNetwork(listOf())
+        }
+
+        return DOTNetwork(
             connections.toList().map { (key, value) ->
                 val source: DNP = when (key) {
                     is ImmSpec -> DNP(key.imm, "")
@@ -268,4 +272,5 @@ class NetlistGraph {
                     .map { DOTConnection(source, it) }
             }.reduce { acc, sublist -> acc + sublist }
         )
+    }
 }

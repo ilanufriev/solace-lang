@@ -171,4 +171,28 @@ class SoftwareVisitorTest {
         byteCodeInstrs.addAll(AsmParser.encodeInstructions(node.initCode))
         byteCodeInstrs.addAll(AsmParser.encodeInstructions(node.runCode))
     }
+
+    @Test fun justCompile() {
+        val visitor = SoftwareVisitor()
+        val (parser, tree) = parse($$"""node AntiPrinter : software (
+                in: numbers;
+            ) {
+                init {
+                    int x = 0;
+                    print("Start!");
+                }
+            
+                run {
+                    x = $numbers;
+                    print(x);
+                    // print("Size: " + $numbers?);
+                }
+            }
+        """.trimMargin())
+
+        val nodeList = (visitor.visit(tree) as List<*>).filterIsInstance<SoftwareVisitor.Node>()
+        val node = nodeList.first()
+        println(node.initCode.joinToString("\n"))
+        println(node.runCode.joinToString("\n"))
+    }
 }

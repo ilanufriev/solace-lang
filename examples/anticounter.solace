@@ -1,0 +1,31 @@
+node AntiCounter : hardware (
+    out: numbers;
+    self: loop;
+) {
+    init {
+        loop <- 10;
+    }
+
+    run {
+        n = $loop - 1;
+        numbers <- n;
+        loop <- if (n == 0) 10 else n;
+    }
+}
+
+node AntiPrinter : software (
+    in: numbers;
+) {
+    init {
+        int x = 0;
+    }
+
+    run {
+        x = $numbers;
+        print(x);
+    }
+}
+
+network {
+    AntiCounter.numbers -> AntiPrinter.numbers;
+}

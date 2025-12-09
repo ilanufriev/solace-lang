@@ -1,7 +1,8 @@
 package solace.vm.internal.harv.asm
 
-open class SimpleInstruction : Instruction {
+open class SimpleInstruction() : Instruction {
     override var isInit: Boolean = false
+
     override fun parse(s: String) {
         val m = AsmParser.matchPatterns(s, arrayOf(
             AsmParser.instructionPattern,
