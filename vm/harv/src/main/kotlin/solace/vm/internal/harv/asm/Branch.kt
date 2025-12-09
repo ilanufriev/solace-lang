@@ -1,6 +1,4 @@
-package solace.vm.internal.harv.instruction
-
-import solace.vm.internal.harv.AsmParser
+package solace.vm.internal.harv.asm
 
 class Branch() : Instruction {
     var labelIfTrue: String? = null

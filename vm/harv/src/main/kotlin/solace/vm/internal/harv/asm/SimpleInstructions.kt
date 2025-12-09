@@ -1,6 +1,4 @@
-package solace.vm.internal.harv.instruction
-
-import solace.vm.internal.harv.AsmParser
+package solace.vm.internal.harv.asm
 
 open class SimpleInstruction : Instruction {
     override var isInit: Boolean = false

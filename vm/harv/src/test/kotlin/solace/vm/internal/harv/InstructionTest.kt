@@ -1,9 +1,13 @@
 package solace.vm.internal.harv
 
-import solace.vm.internal.harv.instruction.*
+import solace.vm.internal.harv.asm.*
+import solace.vm.internal.harv.types.HarvInt
+import solace.vm.internal.harv.types.HarvString
+import solace.vm.internal.harv.types.HarvVal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import solace.vm.StackMachine
 
 class InstructionTest {
     @Test
@@ -91,10 +95,10 @@ class InstructionTest {
 }
 
 class NewStackMachineTest {
-    fun p(code: String): Pair<NewStackMachine.ExecStatus, List<HarvVal>> {
+    fun p(code: String): Pair<StackMachine.ExecStatus, List<HarvVal>> {
         val byteCode = AsmParser.encodeInstructionsFromString(code.trimMargin()).joinToString("")
 
-        val vm = NewStackMachine()
+        val vm = StackMachine()
         vm.loadByteCode(byteCode)
 
         val status = vm.tryRun()
@@ -115,7 +119,7 @@ class NewStackMachineTest {
         """
         )
 
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, status)
         assertEquals(11, (stack.last() as? HarvInt)?.value)
     }
 
@@ -129,7 +133,7 @@ class NewStackMachineTest {
         """
         )
 
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, status)
         assertEquals("PingPong", (stack.last() as? HarvString)?.value)
     }
 
@@ -143,7 +147,7 @@ class NewStackMachineTest {
         """
         )
 
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, status)
         assertEquals("Ping69", (stack.last() as? HarvString)?.value)
     }
 
@@ -165,7 +169,7 @@ class NewStackMachineTest {
 
         val stackList = stack.toList()
 
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, status)
         assertEquals(1, (stackList[0] as? HarvInt)?.value)
         assertEquals(2, (stackList[1] as? HarvInt)?.value)
         assertEquals(7, (stackList[2] as? HarvInt)?.value)
@@ -188,7 +192,7 @@ class NewStackMachineTest {
         """
         )
 
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, status)
         assertEquals(4, (stack.last() as? HarvInt)?.value)
     }
 
@@ -209,7 +213,7 @@ class NewStackMachineTest {
         """
         )
 
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, status)
         assertEquals(5, (stack.last() as? HarvInt)?.value)
     }
 
@@ -227,7 +231,7 @@ class NewStackMachineTest {
         """
         )
 
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, status)
         assertEquals(4, (stack.last() as? HarvInt)?.value)
 
         val (statusFalse, stackFalse) = p(
@@ -242,7 +246,7 @@ class NewStackMachineTest {
         """
         )
 
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, statusFalse)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, statusFalse)
         assertEquals(0, stackFalse.size)
     }
 
@@ -261,7 +265,7 @@ class NewStackMachineTest {
         """
         )
 
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, status)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, status)
         assertEquals(2, (stack.last() as? HarvInt)?.value)
     }
 }

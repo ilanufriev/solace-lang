@@ -1,16 +1,15 @@
-package solace.vm.internal.harv.instruction
+package solace.vm.internal.harv.asm
 
-import solace.vm.internal.harv.AsmParser
+class Put() : Instruction {
+    var valueName: String? = null
 
-class PushSize() : Instruction {
-    var fifoName: String? = null
+    override var isInit: Boolean = false
 
-    constructor(fifoName: String, isInit: Boolean): this() {
-        this.fifoName = fifoName
+    constructor(valueName: String, isInit: Boolean = false) : this() {
+        this.valueName = valueName
         this.isInit = isInit
     }
 
-    override var isInit: Boolean = false
     override fun parse(s: String) {
         val m = AsmParser.matchPatterns(s, arrayOf(
             AsmParser.instructionPattern,
@@ -19,14 +18,15 @@ class PushSize() : Instruction {
         ))
 
         m[0] ?: throw NoInstructionPatternFound(s)
-        fifoName = m[1] ?: throw NoIdentifierPatternFound(s)
+        valueName = m[1] ?: throw NoIdentifierPatternFound(s)
         isInit = m[2] != null
     }
 
     override fun toString(): String {
         return AsmParser.instructionPrefix +
                 "${this::class.simpleName!!.lowercase()} " +
-                AsmParser.valueNamePrefix + "$fifoName" +
+                "${AsmParser.valueNamePrefix}$valueName" +
                 if (isInit) " ?" else ""
     }
+
 }

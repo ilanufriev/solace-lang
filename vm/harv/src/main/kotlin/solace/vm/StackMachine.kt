@@ -1,30 +1,36 @@
-package solace.vm.internal.harv
+package solace.vm
 
-import solace.vm.internal.harv.instruction.Add
-import solace.vm.internal.harv.instruction.And
-import solace.vm.internal.harv.instruction.Branch
-import solace.vm.internal.harv.instruction.Define
-import solace.vm.internal.harv.instruction.Div
-import solace.vm.internal.harv.instruction.Eq
-import solace.vm.internal.harv.instruction.Ge
-import solace.vm.internal.harv.instruction.Goto
-import solace.vm.internal.harv.instruction.Gt
-import solace.vm.internal.harv.instruction.Instruction
-import solace.vm.internal.harv.instruction.Label
-import solace.vm.internal.harv.instruction.Le
-import solace.vm.internal.harv.instruction.Lt
-import solace.vm.internal.harv.instruction.Mod
-import solace.vm.internal.harv.instruction.Mul
-import solace.vm.internal.harv.instruction.Neq
-import solace.vm.internal.harv.instruction.Not
-import solace.vm.internal.harv.instruction.Or
-import solace.vm.internal.harv.instruction.Print
-import solace.vm.internal.harv.instruction.Push
-import solace.vm.internal.harv.instruction.PushSize
-import solace.vm.internal.harv.instruction.Put
-import solace.vm.internal.harv.instruction.Sub
+import solace.vm.internal.harv.asm.Add
+import solace.vm.internal.harv.asm.And
+import solace.vm.internal.harv.asm.AsmParser
+import solace.vm.internal.harv.asm.Branch
+import solace.vm.internal.harv.asm.Define
+import solace.vm.internal.harv.asm.Div
+import solace.vm.internal.harv.asm.Eq
+import solace.vm.internal.harv.asm.Ge
+import solace.vm.internal.harv.asm.Goto
+import solace.vm.internal.harv.asm.Gt
+import solace.vm.internal.harv.asm.Instruction
+import solace.vm.internal.harv.asm.Label
+import solace.vm.internal.harv.asm.Le
+import solace.vm.internal.harv.asm.Lt
+import solace.vm.internal.harv.asm.Mod
+import solace.vm.internal.harv.asm.Mul
+import solace.vm.internal.harv.asm.Neq
+import solace.vm.internal.harv.asm.Not
+import solace.vm.internal.harv.asm.Or
+import solace.vm.internal.harv.asm.Print
+import solace.vm.internal.harv.asm.Push
+import solace.vm.internal.harv.asm.PushSize
+import solace.vm.internal.harv.asm.Put
+import solace.vm.internal.harv.asm.Sub
+import solace.vm.internal.harv.types.HarvFifo
+import solace.vm.internal.harv.types.HarvInt
+import solace.vm.internal.harv.types.HarvString
+import solace.vm.internal.harv.types.HarvVal
+import kotlin.collections.get
 
-class NewStackMachine() {
+class StackMachine() {
     enum class ExecStatus {
         BLOCKED,
         SUCCESS,

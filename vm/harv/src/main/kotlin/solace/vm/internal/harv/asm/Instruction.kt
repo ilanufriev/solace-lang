@@ -1,7 +1,5 @@
-package solace.vm.internal.harv.instruction
+package solace.vm.internal.harv.asm
 
-import solace.vm.internal.harv.HarvStack
-import solace.vm.internal.harv.HarvVal
 import java.lang.Exception
 
 open class InstructionException(val msg: String) : Exception(msg)

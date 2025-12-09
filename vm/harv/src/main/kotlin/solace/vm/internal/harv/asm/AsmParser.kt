@@ -1,13 +1,8 @@
-package solace.vm.internal.harv
+package solace.vm.internal.harv.asm
 
-import solace.vm.internal.harv.instruction.*
-import solace.vm.internal.harv.instruction.IllegalInstruction
-import solace.vm.internal.harv.instruction.Instruction
-import solace.vm.internal.harv.instruction.SimpleInstruction
 import kotlin.math.min
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.reflect.KClass
 
 data class InstructionType(val strCode: String, val opCode: Byte)
 

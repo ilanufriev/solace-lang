@@ -2,10 +2,10 @@ package solace.compiler.visitors
 
 import solace.compiler.antlr.SolaceBaseVisitor
 import solace.compiler.antlr.SolaceParser
-import solace.vm.internal.harv.HarvFifo
-import solace.vm.internal.harv.HarvInt
-import solace.vm.internal.harv.HarvString
-import solace.vm.internal.harv.instruction.*
+import solace.vm.internal.harv.types.HarvFifo
+import solace.vm.internal.harv.types.HarvInt
+import solace.vm.internal.harv.types.HarvString
+import solace.vm.internal.harv.asm.*
 
 class SoftwareVisitor : SolaceBaseVisitor<Any>() {
     open class SoftwareVisitorException(val msg: String): IllegalArgumentException(msg)

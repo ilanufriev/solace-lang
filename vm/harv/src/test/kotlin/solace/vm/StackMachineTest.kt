@@ -1,13 +1,14 @@
-package solace.vm.internal.harv
+package solace.vm
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import solace.vm.internal.harv.asm.AsmParser
 
 class StackMachineTest {
     @Test
     fun testBlockingBehaviour() {
-        val byteCode = solace.vm.internal.harv.AsmParser.encodeInstructionsFromString($$"""
+        val byteCode = AsmParser.encodeInstructionsFromString($$"""
             .define %fifo $in1 ?
             .define %fifo $in2 ?
             .define %fifo $outp ?
@@ -17,37 +18,37 @@ class StackMachineTest {
             .put $outp
         """.trimIndent()).joinToString("")
 
-        val harv = NewStackMachine()
+        val harv = StackMachine()
         harv.loadByteCode(byteCode)
         var result = harv.tryInit()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
 
         harv.pushToFifo("in1", 2)
         harv.pushToFifo("in2", 5)
 
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(1, harv.getFifoSize("outp"))
         assertEquals(7, harv.pullFromFifo("outp"))
 
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.BLOCKED, result)
-        assertFalse(NewStackMachine.ExecStatus.SUCCESS == result)
+        assertEquals(StackMachine.ExecStatus.BLOCKED, result)
+        assertFalse(StackMachine.ExecStatus.SUCCESS == result)
 
         harv.pushToFifo("in1", 2)
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.BLOCKED, result)
+        assertEquals(StackMachine.ExecStatus.BLOCKED, result)
 
         harv.pushToFifo("in2", 3)
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(5, harv.pullFromFifo("outp"))
     }
 
     @Test
     fun testCounter() {
         // Counter example, written in assembly
-        val byteCode = solace.vm.internal.harv.AsmParser.encodeInstructionsFromString($$"""
+        val byteCode = AsmParser.encodeInstructionsFromString($$"""
             .define %fifo $numbers ?
             .define %fifo $loop ?
             .define %int $x ?
@@ -65,28 +66,28 @@ class StackMachineTest {
 
         println(byteCode)
 
-        var harv = NewStackMachine()
+        var harv = StackMachine()
         harv.loadByteCode(byteCode)
         var result = harv.tryInit()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(1, harv.getFifoSize("loop"))
         assertEquals(0, harv.pullFromFifo("loop"))
 
-        harv = NewStackMachine()
+        harv = StackMachine()
         harv.loadByteCode(byteCode)
         result = harv.tryInit()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(1, harv.getFifoSize("numbers"))
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(2, harv.getFifoSize("numbers"))
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(3, harv.getFifoSize("numbers"))
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(4, harv.getFifoSize("numbers"))
 
         assertEquals(1, harv.pullFromFifo("numbers"))

@@ -5,9 +5,9 @@ import org.antlr.v4.runtime.CommonTokenStream
 import solace.compiler.antlr.SolaceLexer
 import solace.compiler.antlr.SolaceParser
 import solace.compiler.visitors.SoftwareVisitor
-import solace.vm.internal.harv.AsmParser
-import solace.vm.internal.harv.EncodedInstruction
-import solace.vm.internal.harv.NewStackMachine
+import solace.vm.internal.harv.asm.AsmParser
+import solace.vm.internal.harv.asm.EncodedInstruction
+import solace.vm.StackMachine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -89,28 +89,28 @@ class SoftwareVisitorTest {
         byteCodeInstrs.addAll(AsmParser.encodeInstructions(node.runCode))
         val byteCode = byteCodeInstrs.joinToString("")
 
-        var harv = NewStackMachine()
+        var harv = StackMachine()
         harv.loadByteCode(byteCode)
         var result = harv.tryInit()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(1, harv.getFifoSize("loop"))
         assertEquals(0, harv.pullFromFifo("loop"))
 
-        harv = NewStackMachine()
+        harv = StackMachine()
         harv.loadByteCode(byteCode)
         result = harv.tryInit()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(1, harv.getFifoSize("numbers"))
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(2, harv.getFifoSize("numbers"))
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(3, harv.getFifoSize("numbers"))
         result = harv.tryRun()
-        assertEquals(NewStackMachine.ExecStatus.SUCCESS, result)
+        assertEquals(StackMachine.ExecStatus.SUCCESS, result)
         assertEquals(4, harv.getFifoSize("numbers"))
 
         assertEquals(1, harv.pullFromFifo("numbers"))

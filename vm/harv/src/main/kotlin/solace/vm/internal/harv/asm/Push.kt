@@ -1,10 +1,8 @@
-package solace.vm.internal.harv.instruction
+package solace.vm.internal.harv.asm
 
-import solace.vm.internal.harv.AsmParser
-import solace.vm.internal.harv.HarvIdentifier
-import solace.vm.internal.harv.HarvInt
-import solace.vm.internal.harv.HarvString
-import solace.vm.internal.harv.HarvVal
+import solace.vm.internal.harv.types.HarvIdentifier
+import solace.vm.internal.harv.types.HarvInt
+import solace.vm.internal.harv.types.HarvString
 
 class Push() : Instruction {
     var string: String? = null

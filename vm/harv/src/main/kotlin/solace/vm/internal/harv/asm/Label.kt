@@ -1,14 +1,11 @@
-package solace.vm.internal.harv.instruction
+package solace.vm.internal.harv.asm
 
-import solace.vm.internal.harv.AsmParser
-
-class Put() : Instruction {
-    var valueName: String? = null
-
+class Label() : Instruction {
+    var labelName: String? = null
     override var isInit: Boolean = false
 
-    constructor(valueName: String, isInit: Boolean = false) : this() {
-        this.valueName = valueName
+    constructor(labelName: String, isInit: Boolean = false) : this() {
+        this.labelName = labelName
         this.isInit = isInit
     }
 
@@ -19,16 +16,15 @@ class Put() : Instruction {
             AsmParser.isInitPattern
         ))
 
-        m[0] ?: throw NoInstructionPatternFound(s)
-        valueName = m[1] ?: throw NoIdentifierPatternFound(s)
+        m[0] ?: NoInstructionPatternFound(s)
+        labelName = m[1] ?: throw NoIdentifierPatternFound(s)
         isInit = m[2] != null
     }
 
     override fun toString(): String {
         return AsmParser.instructionPrefix +
                 "${this::class.simpleName!!.lowercase()} " +
-                "${AsmParser.valueNamePrefix}$valueName" +
+                "${AsmParser.valueNamePrefix}$labelName" +
                 if (isInit) " ?" else ""
     }
-
 }
