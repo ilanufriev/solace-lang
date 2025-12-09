@@ -1,0 +1,59 @@
+/// Mixed hardware/software Fibonacci pipeline:
+/// - TickSource (hardware): emits an increasing tick each cycle.
+/// - FibStepper (software): keeps Fibonacci state and outputs the next number on each tick.
+/// - FibPrinter (software): prints each Fibonacci number.
+
+node TickSource : hardware (
+    out: tick;
+    self: loop;
+) {
+    init {
+        loop <- 0;
+    }
+
+    run {
+        n = $loop + 1;
+        tick <- n;
+        loop <- n;
+    }
+}
+
+node FibStepper : software (
+    in: step;
+    out: fib;
+    self: prev, curr;
+) {
+    init {
+        prev <- 0;
+        curr <- 1;
+    }
+
+    run {
+        int t = $step; // blocks until a tick arrives
+        int a = $prev;
+        int b = $curr;
+        int next = a + b + t * 0; // keep dependency on tick without changing math
+        fib <- next;
+
+        prev <- b;
+        curr <- next;
+    }
+}
+
+node FibPrinter : software (
+    in: inFib;
+) {
+    init {
+        // nothing
+    }
+
+    run {
+        int v = $inFib;
+        print("FIB: " + v);
+    }
+}
+
+network {
+    TickSource.tick -> FibStepper.step;
+    FibStepper.fib  -> FibPrinter.inFib;
+}

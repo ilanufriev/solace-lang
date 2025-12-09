@@ -5,6 +5,7 @@ import org.antlr.v4.runtime.CommonTokenStream
 import solace.compiler.antlr.SolaceLexer
 import solace.compiler.antlr.SolaceParser
 import solace.compiler.visitors.HardwareVisitor.HardwareVisitorException
+import solace.compiler.visitors.SoftwareVisitor.SoftwareVisitorException
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -67,7 +68,9 @@ private fun compileFile(rawInput: Path, outputDir: Path, printAst: Boolean) {
     }
 
     try {
-        val bytecodeByNode = buildHardwareBytecode(tree)
+        val hardwareBytecode = buildHardwareBytecode(tree)
+        val softwareBytecode = buildSoftwareBytecode(tree)
+        val bytecodeByNode = hardwareBytecode + softwareBytecode
         val topology = analyzeProgram(tree)
         val outputName = packageNameFor(input)
         val outputPath = writeProgramPackage(topology, bytecodeByNode, outputDir, outputName)
@@ -76,6 +79,8 @@ private fun compileFile(rawInput: Path, outputDir: Path, printAst: Boolean) {
         println("Validation error: ${ex.message}")
     } catch (ex: HardwareVisitorException) {
         println("Hardware compilation error: ${ex.message}")
+    } catch (ex: SoftwareVisitorException) {
+        println("Software compilation error: ${ex.message}")
     }
 }
 

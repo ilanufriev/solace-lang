@@ -1,0 +1,60 @@
+/// Software-only Fibonacci pipeline mirroring `fibonacci_hard.solace`.
+/// Nodes:
+/// 1) TickSource: emits a tick every run (increments a self counter).
+/// 2) FibStepper: keeps Fibonacci state (prev, curr) and outputs next on each tick.
+/// 3) FibPrinter: consumes Fibonacci stream and prints each value.
+
+node TickSource : software (
+    out: tick;
+    self: loop;
+) {
+    init {
+        loop <- 0;
+    }
+
+    run {
+        int n = $loop + 1;
+        tick <- n;
+        loop <- n;
+    }
+}
+
+node FibStepper : software (
+    in: step;
+    out: fib;
+    self: prev, curr;
+) {
+    init {
+        prev <- 0;
+        curr <- 1;
+    }
+
+    run {
+        int t = $step; // blocks until tick arrives
+        int a = $prev;
+        int b = $curr;
+        int next = a + b + t * 0; // t*0 keeps dependency without changing math
+        fib <- next;
+
+        prev <- b;
+        curr <- next;
+    }
+}
+
+node FibPrinter : software (
+    in: inFib;
+) {
+    init {
+        // nothing
+    }
+
+    run {
+        int v = $inFib;
+        print("FIB: " + v);
+    }
+}
+
+network {
+    TickSource.tick -> FibStepper.step;
+    FibStepper.fib  -> FibPrinter.inFib;
+}

@@ -13,6 +13,7 @@ dependencies {
     // Use the Kotlin Test integration.
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
     implementation project(':vm:sim')
+    implementation project(':vm:harv')
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1"
 
     implementation project(":utils")
