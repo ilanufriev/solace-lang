@@ -1,6 +1,7 @@
 package solace.network
 
 import java.nio.file.Path
+import java.nio.file.Files
 
 private data class CliOptions(
     val packagePath: Path,
@@ -9,7 +10,8 @@ private data class CliOptions(
     val durationMs: Long?,
     val sniffLimit: Int?,
     val sniffCsv: Boolean,
-    val sniffCsvFile: Path?
+    val sniffCsvFile: Path?,
+    val dotFile: Path?
 )
 
 private fun parseArgs(args: Array<String>): CliOptions {
@@ -20,6 +22,7 @@ private fun parseArgs(args: Array<String>): CliOptions {
     var sniffLimit: Int? = null
     var sniffCsv = false
     var sniffCsvFile: Path? = null
+    var dotFile: Path? = null
     var i = 0
     while (i < args.size) {
         when (val arg = args[i]) {
@@ -41,6 +44,11 @@ private fun parseArgs(args: Array<String>): CliOptions {
                 if (i >= args.size) error("Missing value for $arg")
                 sniffLimit = args[i].toInt()
             }
+            "--dot-out" -> {
+                i++
+                if (i >= args.size) error("Missing value for $arg")
+                dotFile = Path.of(args[i])
+            }
             "--duration-ms" -> {
                 i++
                 if (i >= args.size) error("Missing value for $arg")
@@ -55,15 +63,16 @@ private fun parseArgs(args: Array<String>): CliOptions {
         i++
     }
     val packagePath = path ?: Path.of("compiler/build/solace/pseudocode.solpkg")
-    return CliOptions(packagePath, sniff, useSimVm, durationMs, sniffLimit, sniffCsv, sniffCsvFile)
+    return CliOptions(packagePath, sniff, useSimVm, durationMs, sniffLimit, sniffCsv, sniffCsvFile, dotFile)
 }
 
 fun main(args: Array<String>) {
     val options = try {
         parseArgs(args)
     } catch (ex: IllegalStateException) {
-        println("Usage: solace-network <program.solpkg> [--sniff] [--sniff-csv] [--sniff-csv-file <path>] [--sim] [--sniff-limit <n>] [--duration-ms <n>] [--help]")
+        println("Usage: solace-network <program.solpkg> [--dot-out <file>] [--sniff] [--sniff-csv] [--sniff-csv-file <path>] [--sim] [--sniff-limit <n>] [--duration-ms <n>] [--help]")
         println("Options:")
+        println("  --dot-out <file>       Write network topology to Graphviz DOT file and exit")
         println("  --sniff                Print channel traffic for all connections")
         println("  --sniff-csv            Log traffic as CSV: from_node,from_port,to_node,to_port,value (implies --sniff)")
         println("  --sniff-csv-file <p>   Write sniffed CSV records into file <p> (implies --sniff-csv)")
@@ -75,6 +84,14 @@ fun main(args: Array<String>) {
     }
 
     val program = loadProgramPackage(options.packagePath)
+    if (options.dotFile != null) {
+        val dotNetwork = buildNetwork(program).toDOTNetwork().toString()
+        options.dotFile.parent?.let { Files.createDirectories(it) }
+        Files.writeString(options.dotFile, dotNetwork)
+        println("DOT graph written to ${options.dotFile.toAbsolutePath()}")
+        return
+    }
+
     val factory = if (options.useSimVm) {
         SimNodeVmFactory()
     } else null
